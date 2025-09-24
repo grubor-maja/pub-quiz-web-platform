@@ -10,7 +10,7 @@ class QuizController extends Controller
 {
     public function store(Request $r)
     {
-        $uid = $r->user_id ?? null;
+        $uid = (int) $r->header('X-User-Id');
         abort_unless($uid, 401, 'Missing user');
 
         $data = $r->validate([
@@ -52,7 +52,7 @@ class QuizController extends Controller
 
     public function update($id, Request $r)
     {
-        $uid = $r->user_id ?? null;
+        $uid = (int) $r->header('X-User-Id');
         abort_unless($uid, 401, 'Missing user');
 
         $quiz = Quiz::findOrFail($id);
