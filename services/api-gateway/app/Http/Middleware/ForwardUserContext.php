@@ -9,14 +9,12 @@ class ForwardUserContext
 {
     public function handle(Request $request, Closure $next)
     {
-        $response = $next($request);
-        
-        // Ako je korisnik autentifikovan, dodaj X-User-Id header na interne pozive
-        if ($request->user()) {
-            // Ovde možete dodati logiku za prosleđivanje user konteksta
-            // na interne servisne pozive
+        if (auth()->check()) {
+            $request->headers->set('X-User-Id', auth()->id());
+            $request->headers->set('X-User-Email', auth()->user()->email ?? '');
         }
-        
-        return $response;
+        $request->headers->set('X-Internal-Auth', env('APP_INTERNAL_SHARED_SECRET', 'devsecret123'));
+
+        return $next($request);
     }
 }
