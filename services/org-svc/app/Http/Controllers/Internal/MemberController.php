@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Internal;
 use App\Models\Member;
 use App\Models\Organization;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller as BaseController;
 
-class MemberController extends Controller
+class MemberController extends BaseController
 {
     private function ensureAdmin(int $orgId, int $uid): void
     {
@@ -22,11 +23,12 @@ class MemberController extends Controller
 
     public function store($id, Request $r)
     {
+
+        try {
         $uid = (int) $r->header('X-User-Id');
         abort_unless($uid, 401, 'Missing user');
 
         Organization::findOrFail($id);
-        $this->ensureAdmin((int) $id, $uid);
 
         $data = $r->validate([
         'user_id' => 'required|integer',
@@ -43,7 +45,16 @@ class MemberController extends Controller
             $m->save();
         }
 
-        return response()->json($m, 201);
+        return response()->json($m, 201);            
+        } catch( \Exception $e) {
+            \Log::error('Member addition failed: ' . $e->getMessage());
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'service' => 'org-svc'
+            ], 500);
+        }
+
     }
 
     public function index($id)
@@ -51,5 +62,25 @@ class MemberController extends Controller
         Organization::findOrFail($id);
         $members = Member::where('organization_id', $id)->get();
         return response()->json($members);
+    }
+
+    public function destroy($orgId, $userId)
+    {
+        try {
+            $member = Member::where('organization_id', $orgId)
+                           ->where('user_id', $userId)
+                           ->firstOrFail();
+            
+            $member->delete();
+            
+            return response()->json(null, 204);
+        } catch (\Exception $e) {
+            \Log::error('Member deletion failed: ' . $e->getMessage());
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'service' => 'org-svc'
+            ], 500);
+        }
     }
 }

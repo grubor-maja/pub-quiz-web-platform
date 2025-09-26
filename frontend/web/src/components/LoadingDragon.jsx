@@ -24,7 +24,7 @@ function LoadingDragon() {
         style={{ width: '100px', height: '100px' }}
         onError={(e) => {
           // If lgoo files don't work, try standard logo naming
-          if (e.target.src.includes('lgoo')) {
+          if (e.target.src.includes('logo')) {
             e.target.src = `/logo${currentLogo}.png`
           } else {
             // Fallback to SVG dragons

@@ -139,6 +139,63 @@ public function getOrganizations(Request $request)
         }
     }
 
+    public function updateOrganization(Request $request, $id)
+    {
+        try {
+            $res = Http::withHeaders($this->getInternalHeaders($request))
+                ->put($this->getOrgSvcUrl() . "/api/internal/organizations/{$id}", $request->all());
+
+            $body = $res->body();
+            $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
+            $data = json_decode($body, true);
+            
+            return response()->json($data, $res->status());
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'org-svc unavailable',
+                'message' => $e->getMessage(),
+            ], 503);
+        }
+    }
+
+    public function deleteOrganization(Request $request, $id)
+    {
+        try {
+            $res = Http::withHeaders($this->getInternalHeaders($request))
+                ->delete($this->getOrgSvcUrl() . "/api/internal/organizations/{$id}");
+
+            $body = $res->body();
+            $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
+            $data = json_decode($body, true);
+            
+            return response()->json($data, $res->status());
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'org-svc unavailable',
+                'message' => $e->getMessage(),
+            ], 503);
+        }
+    }
+
+    public function removeMember(Request $request, $id, $userId)
+    {
+        try {
+            $res = Http::withHeaders($this->getInternalHeaders($request))
+                ->delete($this->getOrgSvcUrl() . "/api/internal/organizations/{$id}/members/{$userId}");
+
+            $body = $res->body();
+            $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
+            $data = json_decode($body, true);
+            
+            return response()->json($data, $res->status());
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'org-svc unavailable',
+                'message' => $e->getMessage(),
+            ], 503);
+        }
+    }
+
     private function getOrgSvcUrl()
     {
         return env('ORG_SVC_URL', 'http://localhost:8001');
@@ -148,14 +205,14 @@ public function getOrganizations(Request $request)
     {
         $headers = [
             'X-Internal-Auth' => env('INTERNAL_SHARED_SECRET', 'devsecret123'),
-            'X-User-Id'       => optional($request->user())->id,
-            'Accept'          => 'application/json',
-            'Content-Type'    => 'application/json',
+            'X-User-Id' => optional($request->user())->id ?? null,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
         ];
 
         Log::debug('Forwarding headers to org-svc', [
             'X-Internal-Auth' => $headers['X-Internal-Auth'] ? '***present***' : 'MISSING',
-            'X-User-Id'       => $headers['X-User-Id'],
+            'X-User-Id' => $headers['X-User-Id'] ?? 'anonymous',
         ]);
 
         return $headers;

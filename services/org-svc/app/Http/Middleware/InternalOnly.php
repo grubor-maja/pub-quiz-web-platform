@@ -6,9 +6,19 @@ class InternalOnly
 {
     public function handle(Request $request, Closure $next)
     {
-        if ($request->header('X-Internal-Auth') !== env('INTERNAL_SHARED_SECRET', 'devsecret')) {
+        $expected = env('INTERNAL_SHARED_SECRET', 'devsecret123');
+        $provided = $request->header('X-Internal-Auth');
+        
+        \Log::debug('Internal auth check', [
+            'expected' => $expected ? 'present' : 'missing',
+            'provided' => $provided ? 'present' : 'missing',
+            'match' => $provided === $expected
+        ]);
+        
+        if ($provided !== $expected) {
             abort(401, 'Unauthorized internal call');
         }
+        
         return $next($request);
     }
 }

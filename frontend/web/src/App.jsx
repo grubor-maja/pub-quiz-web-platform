@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Dashboard from './pages/Dashboard'
 import QuizDetails from './pages/QuizDetails'
@@ -40,18 +40,18 @@ function AppContent() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             {user ? (
               <>
-                <a href="/" className="nav-link">Dashboard</a>
-                <a href="/manage/users" className="nav-link">Manage Users</a>
-                <a href="/manage/organizations" className="nav-link">Manage Organizations</a>
-                <a href="/manage/quizzes" className="nav-link">Manage Quizzes</a>
+                <Link to="/" className="nav-link">Dashboard</Link>
+                <Link to="/manage/users" className="nav-link">Manage Users</Link>
+                <Link to="/manage/organizations" className="nav-link">Manage Organizations</Link>
+                <Link to="/manage/quizzes" className="nav-link">Manage Quizzes</Link>
                 <span className="nav-link">{user.name} ({user.role})</span>
                 <button onClick={handleLogout} className="btn btn-secondary btn-sm">Logout</button>
               </>
             ) : (
               <>
-                <a href="/" className="nav-link">Home</a>
-                <a href="/login" className="nav-link">Login</a>
-                <a href="/register" className="nav-link">Register</a>
+                <Link to="/" className="nav-link">Home</Link>
+                <Link to="/login" className="nav-link">Login</Link>
+                <Link to="/register" className="nav-link">Register</Link>
               </>
             )}
           </div>

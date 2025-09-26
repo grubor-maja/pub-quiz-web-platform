@@ -170,12 +170,14 @@ body {
   transition: all 0.2s ease;
   font-weight: 500;
   font-size: 14px;
+  display: inline-block;
 }
 
 .nav-link:hover {
   background: rgba(33, 74, 156, 0.15);
   color: #214a9c;
   transform: translateY(-1px);
+  text-decoration: none;
 }
 
 /* Forms */

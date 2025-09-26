@@ -158,14 +158,14 @@ class QuizProxyController extends Controller
     {
         $headers = [
             'X-Internal-Auth' => env('INTERNAL_SHARED_SECRET', 'devsecret123'),
-            'X-User-Id' => optional($request->user())->id,
+            'X-User-Id' => optional($request->user())->id ?? null,
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
         ];
 
         Log::debug('Forwarding headers to quiz-svc', [
             'X-Internal-Auth' => $headers['X-Internal-Auth'] ? '***present***' : 'MISSING',
-            'X-User-Id' => $headers['X-User-Id'],
+            'X-User-Id' => $headers['X-User-Id'] ?? 'anonymous',
         ]);
 
         return $headers;

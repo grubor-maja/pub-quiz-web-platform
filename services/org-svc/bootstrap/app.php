@@ -72,12 +72,14 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             // Fallback 500 (u produkciji bez stack trace)
+            // return error message detailed
             return response()->json([
                 'error' => [
                     'code'    => 'SERVER_ERROR',
-                    'message' => 'Something went wrong.',
+                    'message' => $e->getMessage() ?: 'Something went wrong.',
                 ],
             ], 500);
+
         });
 
         // 4) Logovanje (možeš filtrirati/obogatiti)
