@@ -15,12 +15,16 @@ class OrganizationController extends BaseController
             $uid = (int) $r->header('X-User-Id');
             abort_unless($uid, 401, 'Missing user');
             
-            $data = $r->validate(['name' => 'required|string|min:2']);
+            $data = $r->validate([
+                'name' => 'required|string|min:2',
+                'admin_user_id' => 'required|integer'
+            ]);
             
             // Debug info
             \Log::info('Creating organization', [
                 'user_id' => $uid,
                 'name' => $data['name'],
+                'admin_user_id' => $data['admin_user_id'],
                 'headers' => $r->headers->all()
             ]);
             
@@ -29,9 +33,10 @@ class OrganizationController extends BaseController
                 'created_by' => $uid
             ]);
             
+            // Dodaj izabranog korisnika kao ADMIN
             Member::create([
                 'organization_id' => $org->id, 
-                'user_id' => $uid, 
+                'user_id' => $data['admin_user_id'], 
                 'role' => 'ADMIN'
             ]);
             
@@ -108,9 +113,6 @@ class OrganizationController extends BaseController
     public function index()
     {
         $orgs = Organization::all();
-        // log in terinal all organziations
-        \Log::info('Listing all organizations', ['count' => $orgs->count()]);
-        \Log::info($orgs);
         return response()->json($orgs);
     }
 }

@@ -82,7 +82,7 @@ function EditOrganization() {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`http://localhost:8000/api/organizations/${id}`, {
+      const response = await fetch(`http://localhost:8000/api/manage/organizations/${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -129,11 +129,15 @@ function EditOrganization() {
       if (response.ok) {
         fetchMembers()
         setNewMember({ userId: '', role: 'MEMBER' })
+        alert('Member added successfully!')
       } else {
-        alert('Failed to add member')
+        const errorData = await response.json()
+        console.error('Add member error:', errorData)
+        alert(`Failed to add member: ${errorData.message || errorData.error || 'Unknown error'}`)
       }
     } catch (err) {
-      alert('Network error')
+      console.error('Add member network error:', err)
+      alert('Network error: ' + err.message)
     }
   }
 
@@ -152,11 +156,15 @@ function EditOrganization() {
 
       if (response.ok) {
         setMembers(members.filter(m => m.user_id !== userId))
+        alert('Member removed successfully!')
       } else {
-        alert('Failed to remove member')
+        const errorData = await response.json()
+        console.error('Remove member error:', errorData)
+        alert(`Failed to remove member: ${errorData.message || errorData.error || 'Unknown error'}`)
       }
     } catch (err) {
-      alert('Network error')
+      console.error('Remove member network error:', err)
+      alert('Network error: ' + err.message)
     }
   }
 

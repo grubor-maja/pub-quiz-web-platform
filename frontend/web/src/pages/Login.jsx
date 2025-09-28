@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 
 function Login() {
   const [formData, setFormData] = useState({
@@ -8,9 +8,20 @@ function Login() {
     password: ''
   })
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    // Check if there's a success message from registration
+    if (location.state?.message) {
+      setSuccess(location.state.message)
+      // Clear the state so it doesn't show again on refresh
+      window.history.replaceState({}, document.title)
+    }
+  }, [location])
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -78,6 +89,16 @@ function Login() {
                 style={{ fontSize: '16px' }}
               />
             </div>
+
+            {success && (
+              <div className="card" style={{ 
+                background: 'rgba(40, 167, 69, 0.1)', 
+                borderColor: 'rgba(40, 167, 69, 0.3)',
+                marginBottom: '24px'
+              }}>
+                <p style={{ color: '#28a745', margin: 0, fontSize: '14px' }}>✅ {success}</p>
+              </div>
+            )}
 
             {error && (
               <div className="card" style={{ 

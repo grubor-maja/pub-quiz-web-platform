@@ -36,7 +36,7 @@ function ManageOrganizations() {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`http://localhost:8000/api/organizations/${orgId}`, {
+      const response = await fetch(`http://localhost:8000/api/manage/organizations/${orgId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -46,11 +46,15 @@ function ManageOrganizations() {
 
       if (response.ok) {
         setOrganizations(organizations.filter(org => org.id !== orgId))
+        alert('Organization deleted successfully!')
       } else {
-        alert('Failed to delete organization')
+        const errorData = await response.json()
+        console.error('Delete organization error:', errorData)
+        alert(`Failed to delete organization: ${errorData.message || errorData.error || 'Unknown error'}`)
       }
     } catch (err) {
-      alert('Network error')
+      console.error('Delete organization network error:', err)
+      alert('Network error: ' + err.message)
     }
   }
 
@@ -101,7 +105,6 @@ function ManageOrganizations() {
                 <th>ID</th>
                 <th>Name</th>
                 <th>Created By</th>
-                <th>Members</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
@@ -111,20 +114,7 @@ function ManageOrganizations() {
                 <tr key={org.id}>
                   <td style={{ fontWeight: '600', color: '#214a9c' }}>#{org.id}</td>
                   <td style={{ fontWeight: '500' }}>{org.name}</td>
-                  <td style={{ color: 'rgba(228, 230, 234, 0.8)' }}>User #{org.created_by}</td>
-                  <td>
-                    <span style={{ 
-                      padding: '4px 8px', 
-                      borderRadius: '4px', 
-                      fontSize: '11px',
-                      fontWeight: '600',
-                      background: 'rgba(33, 74, 156, 0.15)',
-                      color: '#214a9c',
-                      border: '1px solid rgba(33, 74, 156, 0.3)'
-                    }}>
-                      {org.members_count || 0} members
-                    </span>
-                  </td>
+                  <td style={{ color: 'rgba(228, 230, 234, 0.8)' }}>{org.created_by_name || `User #${org.created_by}`}</td>
                   <td style={{ color: 'rgba(228, 230, 234, 0.7)', fontSize: '13px' }}>
                     {new Date(org.created_at).toLocaleDateString('sr-RS')}
                   </td>

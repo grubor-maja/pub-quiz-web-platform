@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    // Internal services
+    'internal_auth_token' => env('INTERNAL_SHARED_SECRET', 'devsecret123'),
+    'org_service' => [
+        'url' => env('ORG_SVC_URL', 'http://localhost:8001'),
+    ],
+    'quiz_service' => [
+        'url' => env('QUIZ_SVC_URL', 'http://localhost:8002'),
+    ],
+
 ];

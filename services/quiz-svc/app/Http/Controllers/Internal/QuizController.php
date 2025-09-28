@@ -23,24 +23,44 @@ class QuizController extends Controller
             'time'            => 'required|date_format:H:i',
             'min_team_size'   => 'required|integer|min:1',
             'max_team_size'   => 'required|integer|min:1',
+            'capacity'        => 'nullable|integer|min:1',
             'fee'             => 'nullable|numeric|min:0',
             'contact_phone'   => 'nullable|string',
         ]);
 
         $quiz = Quiz::create(array_merge($data, ['created_by' => $uid]));
 
-        return response()->json($quiz, 201);
+        return response()->json($quiz->load('teams'), 201);
     }
 
     public function show($id)
     {
-        $quiz = Quiz::findOrFail($id);
+        $quiz = Quiz::with(['teams' => function($query) {
+            $query->withPivot('registered_at', 'status', 'final_position')
+                  ->wherePivot('status', 'registered');
+        }])->findOrFail($id);
+        
+        // Add computed attributes to response
+        $quiz->registered_teams_count = $quiz->registered_teams_count;
+        $quiz->remaining_capacity = $quiz->remaining_capacity;
+        
         return response()->json($quiz);
     }
 
     public function listByOrg($orgId)
     {
-        $items = Quiz::where('organization_id', $orgId)->orderBy('date')->get();
+        $items = Quiz::where('organization_id', $orgId)
+                    ->withCount(['teams as registered_teams_count' => function($query) {
+                        $query->wherePivot('status', 'registered');
+                    }])
+                    ->orderBy('date')
+                    ->get();
+        
+        // Add remaining capacity to each quiz
+        $items->each(function($quiz) {
+            $quiz->remaining_capacity = $quiz->remaining_capacity;
+        });
+        
         return response()->json($items);
     }
 
@@ -67,11 +87,23 @@ class QuizController extends Controller
             'time'            => 'sometimes|required|date_format:H:i',
             'min_team_size'   => 'sometimes|required|integer|min:1',
             'max_team_size'   => 'sometimes|required|integer|min:1',
+            'capacity'        => 'nullable|integer|min:1',
             'fee'             => 'nullable|numeric|min:0',
             'contact_phone'   => 'nullable|string',
         ]);
 
+        // If capacity is being reduced, check if it's still valid
+        if (isset($data['capacity']) && $data['capacity'] < $quiz->registered_teams_count) {
+            return response()->json([
+                'message' => 'Cannot reduce capacity below current registered teams count (' . $quiz->registered_teams_count . ')'
+            ], 400);
+        }
+
         $quiz->update($data);
+        
+        // Add computed attributes to response
+        $quiz->registered_teams_count = $quiz->registered_teams_count;
+        $quiz->remaining_capacity = $quiz->remaining_capacity;
 
         return response()->json($quiz);
     }

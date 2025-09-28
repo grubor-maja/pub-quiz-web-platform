@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 function Register() {
   const [formData, setFormData] = useState({
@@ -10,8 +10,10 @@ function Register() {
     password_confirmation: ''
   })
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
+  const navigate = useNavigate()
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -24,6 +26,7 @@ function Register() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccess('')
 
     if (formData.password !== formData.password_confirmation) {
       setError('Passwords do not match')
@@ -33,6 +36,16 @@ function Register() {
 
     try {
       await register(formData)
+      setSuccess('Account created successfully! You will be redirected to login page in 3 seconds...')
+      
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        navigate('/login', { 
+          state: { 
+            message: 'Registration successful! Please log in with your credentials.' 
+          }
+        })
+      }, 3000)
     } catch (err) {
       setError(err.message || 'Registration failed')
     } finally {
@@ -114,6 +127,16 @@ function Register() {
                 style={{ fontSize: '16px' }}
               />
             </div>
+
+            {success && (
+              <div className="card" style={{ 
+                background: 'rgba(40, 167, 69, 0.1)', 
+                borderColor: 'rgba(40, 167, 69, 0.3)',
+                marginBottom: '24px'
+              }}>
+                <p style={{ color: '#28a745', margin: 0, fontSize: '14px' }}>✅ {success}</p>
+              </div>
+            )}
 
             {error && (
               <div className="card" style={{ 

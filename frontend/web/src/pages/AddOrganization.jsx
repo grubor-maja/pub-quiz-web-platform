@@ -1,11 +1,36 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 function AddOrganization() {
   const [name, setName] = useState('')
+  const [adminUserId, setAdminUserId] = useState('')
+  const [allUsers, setAllUsers] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('http://localhost:8000/api/manage/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        const users = await response.json()
+        setAllUsers(users)
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -14,14 +39,17 @@ function AddOrganization() {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:8000/api/organizations', {
+      const response = await fetch('http://localhost:8000/api/manage/organizations', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ 
+          name,
+          admin_user_id: adminUserId 
+        }),
       })
 
       if (response.ok) {
@@ -80,6 +108,32 @@ function AddOrganization() {
               </small>
             </div>
 
+            <div className="form-group">
+              <label className="form-label">Organization Admin *</label>
+              <select
+                value={adminUserId}
+                onChange={(e) => setAdminUserId(e.target.value)}
+                required
+                className="form-control"
+                style={{ fontSize: '16px' }}
+              >
+                <option value="">Select admin user...</option>
+                {allUsers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+              <small style={{ 
+                color: 'rgba(228, 230, 234, 0.6)', 
+                fontSize: '12px', 
+                display: 'block', 
+                marginTop: '6px' 
+              }}>
+                This user will be the administrator of this organization.
+              </small>
+            </div>
+
             {error && (
               <div className="card" style={{ 
                 background: 'rgba(220, 53, 69, 0.1)', 
@@ -101,7 +155,7 @@ function AddOrganization() {
               
               <button 
                 type="submit" 
-                disabled={loading || !name.trim()}
+                disabled={loading || !name.trim() || !adminUserId}
                 className="btn btn-primary"
               >
                 {loading ? 'Creating...' : 'Create Organization'}
