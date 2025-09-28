@@ -243,10 +243,6 @@ function EditUser() {
             <h3 className="card-subtitle" style={{ color: '#214a9c', marginTop: 0 }}>📊 User Stats</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
               <div>
-                <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>User ID</div>
-                <div style={{ fontWeight: '600', color: '#214a9c' }}>#{user.id}</div>
-              </div>
-              <div>
                 <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>Created</div>
                 <div style={{ fontWeight: '500' }}>{new Date(user.created_at).toLocaleDateString('sr-RS')}</div>
               </div>
