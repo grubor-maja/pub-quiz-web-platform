@@ -65,6 +65,26 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const register = async (userData) => {
+    const response = await fetch('http://localhost:8000/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      // Don't automatically log in after registration
+      // User will need to go to login page and sign in
+      return { success: true, message: 'Account created successfully' }
+    } else {
+      throw new Error(data.message || 'Registration failed')
+    }
+  }
+
   const logout = async () => {
     const token = localStorage.getItem('token')
     if (token) {
@@ -92,6 +112,7 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     login,
+    register,
     logout,
     isAuthenticated: !!user,
     isSuperAdmin: user?.is_super_admin || false,

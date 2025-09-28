@@ -18,8 +18,13 @@ class CheckRole
 
         // Super admin ima pristup svemu osim quiz management-u
         if ($user->isSuperAdmin()) {
-            // Super admin ne može upravljati kvizovima ako nije član organizacije  
-            if (in_array('ORG_MEMBER', $roles) || in_array('ORG_ADMIN', $roles)) {
+            // Super admin može upravljati članovima organizacije bez ograničenja
+            if (in_array('ORG_ADMIN', $roles)) {
+                return $next($request);
+            }
+            
+            // Za quiz management, super admin mora biti član organizacije  
+            if (in_array('ORG_MEMBER', $roles)) {
                 $quizId = $request->route('id');
                 if ($quizId && !$this->canManageQuiz($user->id, $quizId)) {
                     return response()->json(['error' => 'Super admin must be organization member to manage quizzes'], 403);

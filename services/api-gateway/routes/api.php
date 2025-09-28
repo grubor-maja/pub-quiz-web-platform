@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OrgProxyController;
 use App\Http\Controllers\QuizProxyController;
+use App\Http\Controllers\TeamProxyController;
 use App\Http\Controllers\UserController;
 
 
@@ -52,7 +53,7 @@ Route::middleware(['auth:sanctum', 'fwd.user'])->group(function () {
         Route::delete('/organizations/{id}', [OrgProxyController::class, 'deleteOrganization']);
     });
     
-    // Accessible to authenticated users for dropdowns etc.
+    // Accessible to authenticated users for dropdowns etc.Ok
     Route::get('/users/list', [UserController::class, 'index']);
     
     // Organization management (SUPER_ADMIN ili ORG_ADMIN)
@@ -61,12 +62,25 @@ Route::middleware(['auth:sanctum', 'fwd.user'])->group(function () {
         Route::post('/organizations/{id}/members', [OrgProxyController::class, 'addMember']);
         Route::delete('/organizations/{id}/members/{userId}', [OrgProxyController::class, 'removeMember']);
     });
+
     
     // Quiz management (SUPER_ADMIN, ORG_ADMIN ili ORG_MEMBER)
     Route::middleware(['role:SUPER_ADMIN,ORG_ADMIN,ORG_MEMBER'])->group(function () {
         Route::post('/quizzes', [QuizProxyController::class, 'createQuiz']);
         Route::put('/quizzes/{id}', [QuizProxyController::class, 'updateQuiz']);
         Route::delete('/quizzes/{id}', [QuizProxyController::class, 'deleteQuiz']);
+        
+        // Team management routes
+        Route::get('/orgs/{orgId}/teams', [TeamProxyController::class, 'getTeamsByOrganization']);
+        Route::post('/teams', [TeamProxyController::class, 'createTeam']);
+        Route::get('/teams/{id}', [TeamProxyController::class, 'getTeam']);
+        Route::put('/teams/{id}', [TeamProxyController::class, 'updateTeam']);
+        Route::delete('/teams/{id}', [TeamProxyController::class, 'deleteTeam']);
+        
+        // Team-Quiz registration routes
+        Route::post('/teams/{teamId}/register-quiz', [TeamProxyController::class, 'registerTeamForQuiz']);
+        Route::post('/teams/{teamId}/unregister-quiz', [TeamProxyController::class, 'unregisterTeamFromQuiz']);
+        Route::get('/quizzes/{quizId}/teams', [TeamProxyController::class, 'getQuizTeams']);
     });
     
     // Basic authenticated routes (svi ulogovani korisnici)
@@ -76,5 +90,6 @@ Route::middleware(['auth:sanctum', 'fwd.user'])->group(function () {
 // Debug/health routes  
 Route::get('/_debug/org-health', [OrgProxyController::class, 'health'])->middleware('auth:sanctum');
 Route::get('/_debug/quiz-health', [QuizProxyController::class, 'health'])->middleware('auth:sanctum');
+Route::get('/_debug/team-health', [TeamProxyController::class, 'health'])->middleware('auth:sanctum');
 
 

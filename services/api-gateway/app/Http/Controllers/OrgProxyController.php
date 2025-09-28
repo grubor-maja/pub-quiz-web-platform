@@ -18,15 +18,23 @@ public function getOrganizations(Request $request)
         $body = $res->body();
         $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE"); 
         
-        $data = json_decode($body, true);
+        $organizations = json_decode($body, true);
+        
+        if ($organizations) {
+            // Dodaj imena kreatora organizacija
+            foreach ($organizations as &$org) {
+                $user = \App\Models\User::find($org['created_by']);
+                $org['created_by_name'] = $user ? $user->name : "User #{$org['created_by']}";
+            }
+        }
         
         \Log::debug('response processing', [
             'raw_body' => $body,
-            'parsed_data' => $data,
+            'parsed_data' => $organizations,
             'json_error' => json_last_error_msg()
         ]);
 
-        return response()->json($data, $res->status());
+        return response()->json($organizations, $res->status());
     } catch (\Throwable $e) {
         \Log::error('Error fetching organizations from org-svc', [
             'message' => $e->getMessage(),

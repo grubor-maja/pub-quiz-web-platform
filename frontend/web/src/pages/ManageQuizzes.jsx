@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { quizService } from '../services/teamService'
 
 function ManageQuizzes() {
   const [quizzes, setQuizzes] = useState([])
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   const fetchQuizzes = async () => {
     try {
@@ -21,6 +24,26 @@ function ManageQuizzes() {
   useEffect(() => {
     fetchQuizzes()
   }, [])
+
+  const getCapacityColor = (registeredCount, capacity) => {
+    if (!capacity) return '#214a9c'
+    const percentage = (registeredCount / capacity) * 100
+    if (percentage >= 90) return '#dc3545'
+    if (percentage >= 70) return '#f39c12'
+    return '#28a745'
+  }
+
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString('sr-RS', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    })
+  }
+
+  const isUpcoming = (dateStr) => {
+    return new Date(dateStr) >= new Date()
+  }
 
   if (loading) {
     return (
@@ -69,7 +92,80 @@ function ManageQuizzes() {
                     <h3 className="quiz-card-title">{quiz.title}</h3>
                     <p className="quiz-card-description">{quiz.description}</p>
                     
+                    {/* Quiz Info */}
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      marginTop: '12px',
+                      padding: '8px 0',
+                      borderTop: '1px solid rgba(228, 230, 234, 0.1)',
+                      fontSize: '13px',
+                      color: 'rgba(228, 230, 234, 0.7)'
+                    }}>
+                      <div>📅 {formatDate(quiz.date)}</div>
+                      <div style={{
+                        color: isUpcoming(quiz.date) ? '#28a745' : '#dc3545',
+                        fontWeight: '500'
+                      }}>
+                        {isUpcoming(quiz.date) ? '🟢 Upcoming' : '🔴 Past'}
+                      </div>
+                    </div>
+
+                    {/* Capacity Info */}
+                    {quiz.capacity && (
+                      <div style={{ marginTop: '12px' }}>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '6px',
+                          fontSize: '13px',
+                          color: 'rgba(228, 230, 234, 0.8)'
+                        }}>
+                          <span>Teams: {quiz.registered_teams_count || 0}/{quiz.capacity}</span>
+                          <span style={{ color: getCapacityColor(quiz.registered_teams_count || 0, quiz.capacity) }}>
+                            {quiz.remaining_capacity || (quiz.capacity - (quiz.registered_teams_count || 0))} left
+                          </span>
+                        </div>
+                        <div style={{
+                          width: '100%',
+                          height: '6px',
+                          background: 'rgba(228, 230, 234, 0.2)',
+                          borderRadius: '3px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${((quiz.registered_teams_count || 0) / quiz.capacity) * 100}%`,
+                            height: '100%',
+                            background: getCapacityColor(quiz.registered_teams_count || 0, quiz.capacity),
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {!quiz.capacity && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '6px 8px',
+                        background: 'rgba(248, 249, 250, 0.05)',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        color: 'rgba(228, 230, 234, 0.6)',
+                        textAlign: 'center'
+                      }}>
+                        No capacity limit set
+                      </div>
+                    )}
+                    
                     <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                      <button 
+                        onClick={() => navigate(`/quiz/${quiz.id}`)}
+                        className="btn btn-sm btn-primary"
+                      >
+                        👥 Manage Teams
+                      </button>
                       <button className="btn btn-sm btn-secondary">
                         ✏️ Edit
                       </button>

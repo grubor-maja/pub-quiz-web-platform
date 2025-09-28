@@ -241,7 +241,7 @@ function EditUser() {
 
           <div className="card" style={{ marginTop: '32px', background: 'rgba(33, 74, 156, 0.05)', borderColor: 'rgba(33, 74, 156, 0.2)' }}>
             <h3 className="card-subtitle" style={{ color: '#214a9c', marginTop: 0 }}>📊 User Stats</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
               <div>
                 <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>User ID</div>
                 <div style={{ fontWeight: '600', color: '#214a9c' }}>#{user.id}</div>
@@ -251,9 +251,29 @@ function EditUser() {
                 <div style={{ fontWeight: '500' }}>{new Date(user.created_at).toLocaleDateString('sr-RS')}</div>
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>Last Updated</div>
-                <div style={{ fontWeight: '500' }}>{new Date(user.updated_at).toLocaleDateString('sr-RS')}</div>
+                <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>Admin Status</div>
+                <div style={{ 
+                  fontWeight: '600',
+                  color: formData.role === 'SUPER_ADMIN' ? '#dc3545' : '#28a745'
+                }}>
+                  {formData.role === 'SUPER_ADMIN' ? '🛡️ Super Admin' : '👤 Regular User'}
+                </div>
               </div>
+              {user.organization_name && (
+                <div>
+                  <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>Organization</div>
+                  <div style={{ fontWeight: '500', color: '#28a745' }}>🏢 {user.organization_name}</div>
+                  {user.organization_role && (
+                    <div style={{ 
+                      fontSize: '10px', 
+                      color: user.organization_role === 'ADMIN' ? '#856404' : '#155724',
+                      marginTop: '2px'
+                    }}>
+                      {user.organization_role === 'ADMIN' ? '👑 Organization Admin' : '👤 Organization Member'}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

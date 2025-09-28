@@ -237,7 +237,7 @@ function Dashboard() {
                   key={quiz.id} 
                   className="quiz-card fade-in"
                   style={{ animationDelay: `${index * 0.1}s` }}
-                  onClick={() => navigate(`/quiz/${quiz.id}`)}
+                  onClick={() => navigate(`/quiz/${quiz.id}?mode=view`)}
                 >
                   <img 
                     src={quiz.image_url || 'https://via.placeholder.com/380x220/1a1f29/214a9c?text=Quiz+Event'} 

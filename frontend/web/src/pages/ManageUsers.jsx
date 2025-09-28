@@ -32,6 +32,9 @@ function ManageUsers() {
   }
 
   const handleDelete = async (userId) => {
+    console.log('Current user:', user) // Debug info
+    console.log('Attempting to delete user ID:', userId)
+    
     if (userId === user.id) {
       alert("You cannot delete yourself!")
       return
@@ -43,6 +46,8 @@ function ManageUsers() {
 
     try {
       const token = localStorage.getItem('token')
+      console.log('Token exists:', !!token) // Debug info
+      
       const response = await fetch(`http://localhost:8000/api/manage/users/${userId}`, {
         method: 'DELETE',
         headers: {
@@ -51,13 +56,20 @@ function ManageUsers() {
         },
       })
 
+      console.log('Delete response status:', response.status) // Debug info
+      console.log('Delete response headers:', response.headers) // Debug info
+
       if (response.ok) {
         setUsers(users.filter(u => u.id !== userId))
+        alert('User deleted successfully!')
       } else {
-        alert('Failed to delete user')
+        const errorData = await response.json()
+        console.error('Delete error:', errorData)
+        alert(`Failed to delete user: ${errorData.message || errorData.error || 'Unknown error'}`)
       }
     } catch (err) {
-      alert('Network error')
+      console.error('Network error:', err)
+      alert('Network error: ' + err.message)
     }
   }
 
@@ -108,7 +120,9 @@ function ManageUsers() {
                 <th>ID</th>
                 <th>Name</th>
                 <th>Email</th>
-                <th>Role</th>
+                <th>System Role</th>
+                <th>Organization</th>
+                <th>Org Role</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
@@ -130,8 +144,55 @@ function ManageUsers() {
                       color: user.role === 'SUPER_ADMIN' ? '#dc3545' : '#214a9c',
                       border: `1px solid ${user.role === 'SUPER_ADMIN' ? 'rgba(220, 53, 69, 0.3)' : 'rgba(33, 74, 156, 0.3)'}`
                     }}>
-                      {user.role}
+                      {user.role === 'SUPER_ADMIN' ? 'SUPER ADMIN' : 'USER'}
                     </span>
+                  </td>
+                  <td>
+                    {user.organization_name ? (
+                      <span style={{ 
+                        color: '#28a745',
+                        fontWeight: '500'
+                      }}>
+                        🏢 {user.organization_name}
+                      </span>
+                    ) : (
+                      <span style={{ 
+                        color: 'rgba(228, 230, 234, 0.5)',
+                        fontStyle: 'italic'
+                      }}>
+                        No organization
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    {user.organization_role ? (
+                      <span style={{ 
+                        padding: '2px 6px', 
+                        borderRadius: '4px', 
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                        background: user.organization_role === 'ADMIN' ? 'rgba(255, 193, 7, 0.15)' : 'rgba(40, 167, 69, 0.15)',
+                        color: user.organization_role === 'ADMIN' ? '#856404' : '#155724',
+                        border: `1px solid ${user.organization_role === 'ADMIN' ? 'rgba(255, 193, 7, 0.3)' : 'rgba(40, 167, 69, 0.3)'}`
+                      }}>
+                        {user.organization_role === 'ADMIN' ? '👑 ADMIN' : '👤 MEMBER'}
+                      </span>
+                    ) : user.organization_name ? (
+                      <span style={{ 
+                        color: 'rgba(228, 230, 234, 0.5)',
+                        fontSize: '11px'
+                      }}>
+                        Unknown
+                      </span>
+                    ) : (
+                      <span style={{ 
+                        color: 'rgba(228, 230, 234, 0.3)',
+                        fontSize: '11px'
+                      }}>
+                        -
+                      </span>
+                    )}
                   </td>
                   <td style={{ color: 'rgba(228, 230, 234, 0.7)', fontSize: '13px' }}>
                     {new Date(user.created_at).toLocaleDateString('sr-RS')}
