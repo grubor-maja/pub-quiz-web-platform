@@ -163,10 +163,10 @@ class QuizProxyController extends Controller
             'Content-Type' => 'application/json',
         ];
 
-        Log::debug('Forwarding headers to quiz-svc', [
-            'X-Internal-Auth' => $headers['X-Internal-Auth'] ? '***present***' : 'MISSING',
-            'X-User-Id' => $headers['X-User-Id'] ?? 'anonymous',
-        ]);
+        // Log::debug('Forwarding headers to quiz-svc', [
+        //     'X-Internal-Auth' => $headers['X-Internal-Auth'] ? '***present***' : 'MISSING',
+        //     'X-User-Id' => $headers['X-User-Id'] ?? 'anonymous',
+        // ]);
 
         return $headers;
     }

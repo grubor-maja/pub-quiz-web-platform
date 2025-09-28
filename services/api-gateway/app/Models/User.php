@@ -20,6 +20,23 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
+
+        protected $appends = ['organization_name', 'organization_role'];
+
+    protected $attributes = [
+        'organization_name' => null,
+        'organization_role' => null,
+    ];
+
+    public function getOrganizationNameAttribute()
+    {
+        return $this->attributes['organization_name'] ?? null;
+    }
+
+    public function getOrganizationRoleAttribute()
+    {
+        return $this->attributes['organization_role'] ?? null;
+    }
     protected $fillable = [
         'name',
         'email',
@@ -133,21 +150,7 @@ class User extends Authenticatable
         return $this->organizationData['organization_id'] ?? null;
     }
 
-    /**
-     * Get organization_role from members table
-     */
-    public function getOrganizationRoleAttribute()
-    {
-        $this->loadOrganizationData();
-        return $this->organizationData['organization_role'] ?? null;
-    }
 
-    /**
-     * Get organization_name from members table
-     */
-    public function getOrganizationNameAttribute()
-    {
-        $this->loadOrganizationData();
-        return $this->organizationData['organization_name'] ?? null;
-    }
+
+
 }

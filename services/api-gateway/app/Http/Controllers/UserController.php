@@ -112,7 +112,7 @@ class UserController extends Controller
                 $orgId = $org['id'] ?? null;
                 if (!$orgId) continue;
 
-                \Log::debug("Fetching members for org", ['org_id' => $orgId]);
+                // \Log::debug("Fetching members for org", ['org_id' => $orgId]);
 
                 $membersResponse = Http::timeout(10)->withHeaders([
                     'X-Internal-Auth' => $internalSecret,
@@ -132,27 +132,31 @@ class UserController extends Controller
                 $membersPayload = $this->decodeJsonFlexible($membersResponse);
                 $membersList    = $this->normalizeList($membersPayload);
 
-                \Log::debug("Found members for org {$orgId}", [
-                    'count' => count($membersList),
-                ]);
+                // \Log::debug("Found members for org {$orgId}", [
+                //     'count' => count($membersList),
+                // ]);
 
                 foreach ($membersList as $rawMember) {
                     $m = $this->normalizeMember($rawMember);
+                    // \Log::debug("info o memberu", ['member' => $m]);
                     if (!$m['user_id']) continue;
-
+                    // \Log::debug("Mapping member", ['user_id' => $m['user_id'], 'role' => $m['role'], 'org_name' => $org['name'] ?? null]);
                     $allMembers[$m['user_id']] = [
                         'organization_name' => $org['name'] ?? null,
                         'organization_role' => $m['role'] ?? null,
                     ];
                 }
+                \Log::debug("svi memeberii", ['allMembers' => $allMembers]);
             }
 
-            foreach ($users as $u) {
-                if (isset($allMembers[$u->id])) {
-                    $u->organization_name = $allMembers[$u->id]['organization_name'];
-                    $u->organization_role = $allMembers[$u->id]['organization_role'];
+                foreach ($users as $u) {
+                    \Log::debug("Merging user", ['id' => $u->id, 'hasMember' => isset($allMembers[$u->id])]);
+                    if (isset($allMembers[$u->id])) {
+                        $u->organization_name = $allMembers[$u->id]['organization_name'];
+                        $u->organization_role = $allMembers[$u->id]['organization_role'];
+                    \Log::debug("informaciojeee", ['user' => $u]);
+                    }
                 }
-            }
         } catch (\Throwable $e) {
             \Log::error("Error fetching organization data: " . $e->getMessage());
         }
@@ -174,7 +178,6 @@ class UserController extends Controller
                 'Accept' => 'application/json',
             ])->get(config('services.org_service.url') . "/api/internal/organizations");
             
-            if ($response->successful()) {
                 $organizations = $response->json();
                 
                 // Za svaku organizaciju provjeri da li je korisnik član
@@ -184,18 +187,17 @@ class UserController extends Controller
                         'Accept' => 'application/json',
                     ])->get(config('services.org_service.url') . "/api/internal/organizations/{$org['id']}/members");
                     
-                    if ($membersResponse->successful()) {
                         $members = $membersResponse->json();
-                        foreach ($members as $member) {
-                            if ($member['user_id'] == $user->id) {
-                                $user->organization_name = $org['name'];
-                                $user->organization_role = $member['role'];
-                                break 2; // Break iz oba loop-a
+                        foreach ($users as $u) {
+                            \Log::debug("Merging user", ['id' => $u->id, 'hasMember' => isset($allMembers[$u->id])]);
+                            if (isset($allMembers[$u->id])) {
+                                $u->organization_name = $allMembers[$u->id]['organization_name'];
+                                $u->organization_role = $allMembers[$u->id]['organization_role'];
                             }
                         }
-                    }
+                    
                 }
-            }
+            
         } catch (\Exception $e) {
             \Log::error("Failed to fetch organization for user {$user->id}: " . $e->getMessage());
         }

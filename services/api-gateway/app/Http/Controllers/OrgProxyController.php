@@ -218,10 +218,10 @@ public function getOrganizations(Request $request)
             'Content-Type' => 'application/json',
         ];
 
-        Log::debug('Forwarding headers to org-svc', [
-            'X-Internal-Auth' => $headers['X-Internal-Auth'] ? '***present***' : 'MISSING',
-            'X-User-Id' => $headers['X-User-Id'] ?? 'anonymous',
-        ]);
+        // Log::debug('Forwarding headers to org-svc', [
+        //     'X-Internal-Auth' => $headers['X-Internal-Auth'] ? '***present***' : 'MISSING',
+        //     'X-User-Id' => $headers['X-User-Id'] ?? 'anonymous',
+        // ]);
 
         return $headers;
     }
