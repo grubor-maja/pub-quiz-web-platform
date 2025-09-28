@@ -478,14 +478,14 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
     fetchOrgTeams()
   }, [quiz?.organization_id])
 
-  const handleRegisterTeam = async (teamId) => {
+  const handleApplyTeam = async (teamId) => {
     try {
-      await teamService.registerTeamForQuiz(teamId, quiz.id)
-      setSuccess('Team registered successfully!')
+      await teamService.applyTeamForQuiz(teamId, quiz.id)
+      setSuccess('Team application submitted successfully!')
       onTeamsUpdate() // Refresh quiz teams data
       fetchOrgTeams() // Refresh org teams to update registration status
     } catch (err) {
-      setError(err.message || 'Failed to register team')
+      setError(err.message || 'Failed to submit team application')
     }
   }
 
@@ -506,6 +506,10 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
     if (percentage >= 90) return '#dc3545'
     if (percentage >= 70) return '#f39c12'
     return '#28a745'
+  }
+
+  const getAppliedTeamIds = () => {
+    return quizTeams?.teams?.filter(team => team.pivot.status === 'pending').map(team => team.id) || []
   }
 
   const getRegisteredTeamIds = () => {
@@ -663,19 +667,24 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {orgTeams.map(team => {
                   const isRegistered = getRegisteredTeamIds().includes(team.id)
-                  const canRegister = !isRegistered && (!quiz.capacity || (quiz.registered_teams_count || 0) < quiz.capacity)
+                  const isApplied = getAppliedTeamIds().includes(team.id)
+                  const canApply = !isRegistered && !isApplied && (!quiz.capacity || (quiz.registered_teams_count || 0) < quiz.capacity)
                   
                   return (
                     <div key={team.id} style={{
                       padding: '16px',
-                      background: isRegistered ? 'rgba(40, 167, 69, 0.05)' : 'rgba(228, 230, 234, 0.05)',
-                      border: `1px solid ${isRegistered ? 'rgba(40, 167, 69, 0.2)' : 'rgba(228, 230, 234, 0.2)'}`,
+                      background: isRegistered ? 'rgba(40, 167, 69, 0.05)' : 
+                                  isApplied ? 'rgba(255, 193, 7, 0.05)' : 
+                                  'rgba(228, 230, 234, 0.05)',
+                      border: `1px solid ${isRegistered ? 'rgba(40, 167, 69, 0.2)' : 
+                                           isApplied ? 'rgba(255, 193, 7, 0.2)' : 
+                                           'rgba(228, 230, 234, 0.2)'}`,
                       borderRadius: '8px'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                         <div>
                           <h4 style={{ margin: '0 0 8px 0', color: '#e4e6ea' }}>
-                            {team.name} {isRegistered && '✅'}
+                            {team.name} {isRegistered && '✅'} {isApplied && '⏳'}
                           </h4>
                           <div style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
                             👥 {team.member_count} members
@@ -686,13 +695,24 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
                             </div>
                           )}
                         </div>
-                        {canRegister && (
+                        {canApply && (
                           <button
-                            onClick={() => handleRegisterTeam(team.id)}
+                            onClick={() => handleApplyTeam(team.id)}
                             className="btn btn-primary btn-sm"
                           >
-                            Register
+                            Apply
                           </button>
+                        )}
+                        {isApplied && (
+                          <span style={{ 
+                            padding: '4px 8px',
+                            background: 'rgba(255, 193, 7, 0.2)',
+                            color: '#ffc107',
+                            borderRadius: '4px',
+                            fontSize: '12px'
+                          }}>
+                            Pending
+                          </span>
                         )}
                         {isRegistered && (
                           <span style={{ 

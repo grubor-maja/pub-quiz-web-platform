@@ -130,6 +130,121 @@ class TeamController extends Controller
     }
 
     /**
+     * Apply team for a quiz (pending status)
+     */
+    public function applyForQuiz($teamId, Request $request)
+    {
+        $uid = (int) $request->header('X-User-Id');
+        abort_unless($uid, 401, 'Missing user');
+
+        $data = $request->validate([
+            'quiz_id' => 'required|integer|exists:quizzes,id'
+        ]);
+
+        $team = Team::findOrFail($teamId);
+        $quiz = Quiz::findOrFail($data['quiz_id']);
+
+        // Check if team already has application/registration for this quiz
+        $existingEntry = $team->quizzes()
+                             ->wherePivot('quiz_id', $quiz->id)
+                             ->whereIn('team_quiz.status', ['pending', 'registered'])
+                             ->exists();
+
+        if ($existingEntry) {
+            return response()->json([
+                'message' => 'Team already has an application or is registered for this quiz.'
+            ], 400);
+        }
+
+        // Create pending application
+        $team->quizzes()->attach($quiz->id, [
+            'registered_at' => now(),
+            'status' => 'pending'
+        ]);
+
+        return response()->json([
+            'message' => 'Team application submitted successfully. Waiting for admin approval.',
+            'status' => 'pending'
+        ]);
+    }
+
+    /**
+     * Approve team application (admin only)
+     */
+    public function approveApplication($teamId, Request $request)
+    {
+        $uid = (int) $request->header('X-User-Id');
+        abort_unless($uid, 401, 'Missing user');
+
+        $data = $request->validate([
+            'quiz_id' => 'required|integer|exists:quizzes,id'
+        ]);
+
+        $team = Team::findOrFail($teamId);
+        $quiz = Quiz::findOrFail($data['quiz_id']);
+
+        // Check if quiz has available spots
+        if (!$quiz->hasAvailableSpots()) {
+            return response()->json([
+                'message' => 'Quiz is full. Cannot approve more teams.'
+            ], 400);
+        }
+
+        // Update pending application to registered
+        $updated = $team->quizzes()
+                       ->wherePivot('quiz_id', $quiz->id)
+                       ->wherePivot('status', 'pending')
+                       ->updateExistingPivot($quiz->id, [
+                           'status' => 'registered',
+                           'registered_at' => now()
+                       ]);
+
+        if (!$updated) {
+            return response()->json([
+                'message' => 'No pending application found for this team and quiz.'
+            ], 400);
+        }
+
+        return response()->json([
+            'message' => 'Team application approved successfully',
+            'status' => 'registered',
+            'remaining_capacity' => $quiz->fresh()->remaining_capacity
+        ]);
+    }
+
+    /**
+     * Reject team application (admin only)
+     */
+    public function rejectApplication($teamId, Request $request)
+    {
+        $uid = (int) $request->header('X-User-Id');
+        abort_unless($uid, 401, 'Missing user');
+
+        $data = $request->validate([
+            'quiz_id' => 'required|integer|exists:quizzes,id'
+        ]);
+
+        $team = Team::findOrFail($teamId);
+        $quiz = Quiz::findOrFail($data['quiz_id']);
+
+        // Remove pending application
+        $deleted = $team->quizzes()
+                       ->wherePivot('quiz_id', $quiz->id)
+                       ->wherePivot('status', 'pending')
+                       ->detach($quiz->id);
+
+        if (!$deleted) {
+            return response()->json([
+                'message' => 'No pending application found for this team and quiz.'
+            ], 400);
+        }
+
+        return response()->json([
+            'message' => 'Team application rejected successfully'
+        ]);
+    }
+
+    /**
      * Register team for a quiz
      */
     public function registerForQuiz($teamId, Request $request)

@@ -11,6 +11,11 @@ import ManageOrganizations from './pages/ManageOrganizations'
 import AddOrganization from './pages/AddOrganization'
 import EditOrganization from './pages/EditOrganization'
 import ManageQuizzes from './pages/ManageQuizzes'
+import ManageLeagues from './pages/ManageLeagues'
+import LeagueForm from './pages/LeagueForm'
+import EditQuiz from './pages/EditQuiz'
+import Leagues from './pages/Leagues'
+import LeagueDetails from './pages/LeagueDetails'
 import './App.css'
 
 function AppContent() {
@@ -41,15 +46,18 @@ function AppContent() {
             {user ? (
               <>
                 <Link to="/" className="nav-link">Dashboard</Link>
+                <Link to="/leagues" className="nav-link">Leagues</Link>
                 <Link to="/manage/users" className="nav-link">Manage Users</Link>
                 <Link to="/manage/organizations" className="nav-link">Manage Organizations</Link>
                 <Link to="/manage/quizzes" className="nav-link">Manage Quizzes</Link>
+                <Link to="/manage/leagues" className="nav-link">Manage Leagues</Link>
                 <span className="nav-link">{user.name} ({user.role})</span>
                 <button onClick={handleLogout} className="btn btn-secondary btn-sm">Logout</button>
               </>
             ) : (
               <>
                 <Link to="/" className="nav-link">Home</Link>
+                <Link to="/leagues" className="nav-link">Leagues</Link>
                 <Link to="/login" className="nav-link">Login</Link>
                 <Link to="/register" className="nav-link">Register</Link>
               </>
@@ -70,6 +78,11 @@ function AppContent() {
           <Route path="/manage/organizations/add" element={<AddOrganization />} />
           <Route path="/manage/organizations/edit/:id" element={<EditOrganization />} />
           <Route path="/manage/quizzes" element={<ManageQuizzes />} />
+          <Route path="/manage/leagues" element={<ManageLeagues />} />
+          <Route path="/league/create" element={<LeagueForm />} />
+          <Route path="/league/edit/:id" element={<LeagueForm />} />
+          <Route path="/league/:id" element={<LeagueDetails />} />
+          <Route path="/quiz/:id/edit" element={<EditQuiz />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       ) : (
@@ -78,6 +91,8 @@ function AppContent() {
           <Route path="/register" element={<Register />} />
           <Route path="/" element={<Dashboard />} />
           <Route path="/quiz/:id" element={<QuizDetails />} />
+          <Route path="/leagues" element={<Leagues />} />
+          <Route path="/league/:id" element={<LeagueDetails />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       )}

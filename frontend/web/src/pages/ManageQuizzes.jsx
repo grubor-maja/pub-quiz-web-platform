@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { quizService } from '../services/teamService'
+import { quizService, teamService } from '../services/teamService'
 
 function ManageQuizzes() {
   const [quizzes, setQuizzes] = useState([])
   const [loading, setLoading] = useState(true)
+  const [pendingApplications, setPendingApplications] = useState({})
+  const [loadingApplications, setLoadingApplications] = useState({})
   const navigate = useNavigate()
 
   const fetchQuizzes = async () => {
@@ -13,11 +15,87 @@ function ManageQuizzes() {
       if (response.ok) {
         const data = await response.json()
         setQuizzes(data || [])
+        
+        // Fetch pending applications for each quiz
+        const applications = {}
+        for (const quiz of data || []) {
+          try {
+            const teamsResponse = await teamService.getQuizTeams(quiz.id)
+            const pendingTeams = teamsResponse.teams?.filter(team => team.pivot.status === 'pending') || []
+            if (pendingTeams.length > 0) {
+              applications[quiz.id] = pendingTeams
+            }
+          } catch (err) {
+            console.error(`Error fetching teams for quiz ${quiz.id}:`, err)
+          }
+        }
+        setPendingApplications(applications)
       }
     } catch (err) {
       console.error('Error fetching quizzes:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async (quizId) => {
+    if (!confirm('Are you sure you want to delete this quiz? This will also delete all team registrations.')) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`http://localhost:8000/api/quizzes/${quizId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        setQuizzes(quizzes.filter(quiz => quiz.id !== quizId))
+        alert('Quiz deleted successfully!')
+      } else {
+        const errorData = await response.json()
+        console.error('Delete quiz error:', errorData)
+        alert(`Failed to delete quiz: ${errorData.message || errorData.error || 'Unknown error'}`)
+      }
+    } catch (err) {
+      console.error('Delete quiz network error:', err)
+      alert('Network error: ' + err.message)
+    }
+  }
+
+  const handleApproveTeam = async (quizId, teamId) => {
+    setLoadingApplications(prev => ({...prev, [teamId]: true}))
+    try {
+      await teamService.approveTeamApplication(teamId, quizId)
+      await fetchQuizzes() // Refresh data
+      alert('Team application approved successfully!')
+    } catch (err) {
+      console.error('Error approving team:', err)
+      alert('Failed to approve team application: ' + err.message)
+    } finally {
+      setLoadingApplications(prev => ({...prev, [teamId]: false}))
+    }
+  }
+
+  const handleRejectTeam = async (quizId, teamId) => {
+    if (!confirm('Are you sure you want to reject this team application?')) {
+      return
+    }
+    
+    setLoadingApplications(prev => ({...prev, [teamId]: true}))
+    try {
+      await teamService.rejectTeamApplication(teamId, quizId)
+      await fetchQuizzes() // Refresh data
+      alert('Team application rejected successfully!')
+    } catch (err) {
+      console.error('Error rejecting team:', err)
+      alert('Failed to reject team application: ' + err.message)
+    } finally {
+      setLoadingApplications(prev => ({...prev, [teamId]: false}))
     }
   }
 
@@ -67,6 +145,81 @@ function ManageQuizzes() {
             + Add New Quiz
           </button>
         </div>
+
+        {/* Pending Applications Section */}
+        {Object.keys(pendingApplications).length > 0 && (
+          <div className="card" style={{ marginBottom: '24px' }}>
+            <div className="card-header">
+              <h2 className="card-title">⏳ Pending Team Applications</h2>
+              <p style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)', margin: '8px 0 0 0' }}>
+                Teams waiting for approval to participate in quizzes
+              </p>
+            </div>
+            <div className="card-body">
+              {Object.entries(pendingApplications).map(([quizId, teams]) => {
+                const quiz = quizzes.find(q => q.id.toString() === quizId)
+                return (
+                  <div key={quizId} style={{ 
+                    marginBottom: '24px', 
+                    padding: '16px',
+                    background: 'rgba(255, 193, 7, 0.05)',
+                    border: '1px solid rgba(255, 193, 7, 0.2)',
+                    borderRadius: '8px'
+                  }}>
+                    <h4 style={{ margin: '0 0 12px 0', color: '#e4e6ea' }}>
+                      📊 {quiz?.title || 'Quiz ' + quizId}
+                    </h4>
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                      {teams.map(team => (
+                        <div key={team.id} style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '12px',
+                          background: 'rgba(228, 230, 234, 0.05)',
+                          borderRadius: '6px'
+                        }}>
+                          <div>
+                            <div style={{ fontWeight: '500', color: '#e4e6ea' }}>
+                              {team.name}
+                            </div>
+                            <div style={{ fontSize: '13px', color: 'rgba(228, 230, 234, 0.7)' }}>
+                              👥 {team.member_count} members
+                              {team.contact_phone && ` • 📞 ${team.contact_phone}`}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => handleApproveTeam(quizId, team.id)}
+                              disabled={loadingApplications[team.id]}
+                              className="btn btn-sm btn-primary"
+                              style={{ minWidth: '80px' }}
+                            >
+                              {loadingApplications[team.id] ? '⏳' : '✅ Approve'}
+                            </button>
+                            <button
+                              onClick={() => handleRejectTeam(quizId, team.id)}
+                              disabled={loadingApplications[team.id]}
+                              className="btn btn-sm"
+                              style={{
+                                minWidth: '80px',
+                                background: 'rgba(220, 53, 69, 0.15)',
+                                color: '#dc3545',
+                                border: '1px solid rgba(220, 53, 69, 0.3)'
+                              }}
+                            >
+                              {loadingApplications[team.id] ? '⏳' : '❌ Reject'}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="card">
           <div className="card-header">
@@ -166,14 +319,21 @@ function ManageQuizzes() {
                       >
                         👥 Manage Teams
                       </button>
-                      <button className="btn btn-sm btn-secondary">
+                      <button 
+                        onClick={() => navigate(`/quiz/${quiz.id}/edit`)}
+                        className="btn btn-sm btn-secondary"
+                      >
                         ✏️ Edit
                       </button>
-                      <button className="btn btn-sm" style={{ 
-                        background: 'rgba(220, 53, 69, 0.15)',
-                        color: '#dc3545',
-                        border: '1px solid rgba(220, 53, 69, 0.3)'
-                      }}>
+                      <button 
+                        onClick={() => handleDelete(quiz.id)}
+                        className="btn btn-sm" 
+                        style={{ 
+                          background: 'rgba(220, 53, 69, 0.15)',
+                          color: '#dc3545',
+                          border: '1px solid rgba(220, 53, 69, 0.3)'
+                        }}
+                      >
                         🗑️ Delete
                       </button>
                     </div>

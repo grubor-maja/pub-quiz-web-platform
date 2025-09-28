@@ -134,10 +134,10 @@ export const teamService = {
     }
   },
 
-  // Register team for quiz
-  async registerTeamForQuiz(teamId, quizId) {
+  // Apply team for quiz (pending status)
+  async applyTeamForQuiz(teamId, quizId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/teams/${teamId}/register-quiz`, {
+      const response = await fetch(`${API_BASE_URL}/teams/${teamId}/apply-quiz`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ quiz_id: quizId }),
@@ -150,7 +150,49 @@ export const teamService = {
       
       return await response.json()
     } catch (error) {
-      console.error('Error registering team for quiz:', error)
+      console.error('Error applying team for quiz:', error)
+      throw error
+    }
+  },
+
+  // Approve team application (admin only)
+  async approveTeamApplication(teamId, quizId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/teams/${teamId}/approve-quiz`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ quiz_id: quizId }),
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error approving team application:', error)
+      throw error
+    }
+  },
+
+  // Reject team application (admin only)
+  async rejectTeamApplication(teamId, quizId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/teams/${teamId}/reject-quiz`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ quiz_id: quizId }),
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error rejecting team application:', error)
       throw error
     }
   },

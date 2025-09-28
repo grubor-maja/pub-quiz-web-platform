@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OrgProxyController;
 use App\Http\Controllers\QuizProxyController;
 use App\Http\Controllers\TeamProxyController;
+use App\Http\Controllers\LeagueProxyController;
 use App\Http\Controllers\UserController;
 
 
@@ -33,6 +34,10 @@ Route::get('/organizations/{id}', [OrgProxyController::class, 'getOrganization']
 Route::get('/quizzes', [QuizProxyController::class, 'getQuizzes']);
 Route::get('/quizzes/{id}', [QuizProxyController::class, 'getQuiz']);
 Route::get('/organizations/{orgId}/quizzes', [QuizProxyController::class, 'getQuizzesByOrganization']);
+Route::get('/leagues', [LeagueProxyController::class, 'getLeagues']);
+Route::get('/leagues/{id}', [LeagueProxyController::class, 'getLeague']);
+Route::get('/leagues/{leagueId}/table', [LeagueProxyController::class, 'getLeagueTable']);
+Route::get('/organizations/{orgId}/leagues', [LeagueProxyController::class, 'getLeaguesByOrganization']);
 
 // Protected routes (require Bearer token)
 Route::middleware(['auth:sanctum', 'fwd.user'])->group(function () {
@@ -78,9 +83,20 @@ Route::middleware(['auth:sanctum', 'fwd.user'])->group(function () {
         Route::delete('/teams/{id}', [TeamProxyController::class, 'deleteTeam']);
         
         // Team-Quiz registration routes
+        Route::post('/teams/{teamId}/apply-quiz', [TeamProxyController::class, 'applyTeamForQuiz']);
+        Route::post('/teams/{teamId}/approve-quiz', [TeamProxyController::class, 'approveTeamApplication']);
+        Route::post('/teams/{teamId}/reject-quiz', [TeamProxyController::class, 'rejectTeamApplication']);
         Route::post('/teams/{teamId}/register-quiz', [TeamProxyController::class, 'registerTeamForQuiz']);
         Route::post('/teams/{teamId}/unregister-quiz', [TeamProxyController::class, 'unregisterTeamFromQuiz']);
         Route::get('/quizzes/{quizId}/teams', [TeamProxyController::class, 'getQuizTeams']);
+        
+        // League management routes
+        Route::post('/leagues', [LeagueProxyController::class, 'createLeague']);
+        Route::put('/leagues/{id}', [LeagueProxyController::class, 'updateLeague']);
+        Route::delete('/leagues/{id}', [LeagueProxyController::class, 'deleteLeague']);
+        Route::post('/leagues/{leagueId}/teams', [LeagueProxyController::class, 'addTeamToLeague']);
+        Route::delete('/leagues/{leagueId}/teams/{teamId}', [LeagueProxyController::class, 'removeTeamFromLeague']);
+        Route::post('/leagues/{leagueId}/rounds', [LeagueProxyController::class, 'enterRoundResults']);
     });
     
     // Basic authenticated routes (svi ulogovani korisnici)
@@ -91,5 +107,6 @@ Route::middleware(['auth:sanctum', 'fwd.user'])->group(function () {
 Route::get('/_debug/org-health', [OrgProxyController::class, 'health'])->middleware('auth:sanctum');
 Route::get('/_debug/quiz-health', [QuizProxyController::class, 'health'])->middleware('auth:sanctum');
 Route::get('/_debug/team-health', [TeamProxyController::class, 'health'])->middleware('auth:sanctum');
+Route::get('/_debug/league-health', [LeagueProxyController::class, 'health'])->middleware('auth:sanctum');
 
 
