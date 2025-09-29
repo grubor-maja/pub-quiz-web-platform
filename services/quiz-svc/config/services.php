@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Internal microservice communication
+    'org_service' => [
+        'url' => env('ORG_SVC_URL', 'http://localhost:8001'),
+    ],
+
+    'internal_auth_token' => env('INTERNAL_SHARED_SECRET', 'devsecret123'),
+
 ];

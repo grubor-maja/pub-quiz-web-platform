@@ -116,6 +116,8 @@ class LeagueProxyController extends Controller
                 'user_org_role' => $user ? $user->organization_role : 'null',
                 'request_data' => $request->all()
             ]);
+            \Log::info("SALJEM OVDE");
+            \Log::info("{$this->quizServiceUrl}/leagues", $request->all());
             
             $response = Http::withHeaders([
                 'X-Internal-Auth' => config('services.internal_auth_token'),
@@ -126,6 +128,12 @@ class LeagueProxyController extends Controller
             ])->post("{$this->quizServiceUrl}/leagues", $request->all());
 
             if ($response->failed()) {
+                \Log::error('League creation failed', [
+                    'status' => $response->status(),
+                    'response' => $response->json(),
+                    'error' => 'Failed to create league',
+                    'request_data' => $request->all()
+                ]);
                 return response()->json([
                     'error' => 'Failed to create league',
                     'details' => $response->json()

@@ -32,6 +32,7 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         const userData = await response.json()
         setUser(userData)
+        console.log('Fetched user dataaaa:', userData) // Debug info
       } else {
         localStorage.removeItem('token')
         setUser(null)

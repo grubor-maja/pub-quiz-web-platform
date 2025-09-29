@@ -59,8 +59,18 @@ class MemberController extends BaseController
 
     public function index($id)
     {
-        Organization::findOrFail($id);
-        $members = Member::where('organization_id', $id)->get();
+        $org = Organization::findOrFail($id);
+        
+        $members = Member::where('organization_id', $id)->get()
+            ->map(function ($m) use ($org) {
+                return [
+                    'user_id'           => $m->user_id,
+                    'role'              => $m->role,
+                    'organization_id'   => $org->id,
+                    'organization_name' => $org->name,
+                ];
+            });
+
         return response()->json($members);
     }
 

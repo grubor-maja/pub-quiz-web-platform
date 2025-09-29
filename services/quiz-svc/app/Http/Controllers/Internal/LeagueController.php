@@ -45,42 +45,148 @@ class LeagueController extends Controller
      */
     public function store(Request $request)
     {
-        $uid = (int) $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
-        $userOrgId = (int) $request->header('X-User-Org-Id');
+        // Get user_id from request payload (sent from frontend)
+        $requestUserId = (int) $request->input('user_id');
+        $uid = $requestUserId ?: (int) $request->header('X-User-Id');
         
-        // Debug logging
         \Log::info('League creation attempt', [
-            'uid' => $uid,
-            'userRole' => $userRole,
-            'userOrgId' => $userOrgId,
-            'all_headers' => $request->headers->all()
+            'payload_user_id' => $requestUserId,
+            'header_user_id' => (int) $request->header('X-User-Id'),
+            'final_uid' => $uid,
+            'request_data' => $request->all(),
         ]);
         
-        abort_unless($uid, 401, 'Missing user');
-        abort_unless($userRole, 401, 'Missing user role');
+        abort_unless($uid, 401, 'Missing user ID');
 
-        // Check permissions: admin can create leagues only for their org, super admin for any
-        if ($userRole === 'ADMIN' && !$userOrgId) {
-            \Log::error('Admin without organization', ['uid' => $uid, 'userRole' => $userRole, 'userOrgId' => $userOrgId]);
-            abort(403, 'Insufficient permissions');
+        // Always fetch user's organization from org-svc using user_id
+        $userRole = null;
+        $userOrgId = null;
+        
+        try {
+            $orgSvcUrl = config('services.org_service.url', env('ORG_SVC_URL', 'http://localhost:8001'));
+            $internalSecret = config('services.internal_auth_token', env('INTERNAL_SHARED_SECRET', 'devsecret123'));
+
+            \Log::info('Fetching user organization from org-svc', ['user_id' => $uid]);
+
+            // Get all organizations
+            $orgResponse = \Http::timeout(10)->withHeaders([
+                'X-Internal-Auth' => $internalSecret,
+                'Accept' => 'application/json',
+            ])->get($orgSvcUrl . '/api/internal/organizations');
+
+            if ($orgResponse->successful()) {
+                $rawBody = $orgResponse->body();
+                
+                // Remove BOM and trim whitespace
+                $cleanBody = ltrim($rawBody, "\xEF\xBB\xBF\x00\x20\x09\x0A\x0D");
+                $organizations = json_decode($cleanBody, true);
+                
+                \Log::info('Organizations response from org-svc', [
+                    'status' => $orgResponse->status(),
+                    'raw_body_length' => strlen($rawBody),
+                    'clean_body_length' => strlen($cleanBody),
+                    'raw_body_first_20' => bin2hex(substr($rawBody, 0, 20)),
+                    'clean_body_first_20' => bin2hex(substr($cleanBody, 0, 20)),
+                    'organizations_count' => is_array($organizations) ? count($organizations) : 'not array',
+                    'organizations_type' => gettype($organizations),
+                    'json_last_error' => json_last_error_msg()
+                ]);
+                
+                if (!is_array($organizations)) {
+                    \Log::error('Invalid organizations response format', ['response' => $organizations]);
+                    $organizations = [];
+                }
+                
+                // Find user's organization by checking members
+                foreach ($organizations as $org) {
+                    $membersResponse = \Http::timeout(10)->withHeaders([
+                        'X-Internal-Auth' => $internalSecret,
+                        'Accept' => 'application/json',
+                    ])->get($orgSvcUrl . "/api/internal/organizations/{$org['id']}/members");
+                    
+                    if ($membersResponse->successful()) {
+                        $rawMembersBody = $membersResponse->body();
+                        $cleanMembersBody = ltrim($rawMembersBody, "\xEF\xBB\xBF\x00\x20\x09\x0A\x0D");
+                        $members = json_decode($cleanMembersBody, true);
+                        
+                        if (!is_array($members)) {
+                            \Log::warning('Invalid members response format for org', [
+                                'org_id' => $org['id'], 
+                                'response' => $members,
+                                'raw_length' => strlen($rawMembersBody),
+                                'clean_length' => strlen($cleanMembersBody),
+                                'json_error' => json_last_error_msg()
+                            ]);
+                            continue;
+                        }
+                        
+                        foreach ($members as $member) {
+                            if (isset($member['user_id']) && $member['user_id'] == $uid) {
+                                $userOrgId = $org['id'];
+                                $userRole = $member['role'] ?? 'MEMBER';
+                                \Log::info('Found user organization', [
+                                    'user_id' => $uid, 
+                                    'organization_id' => $userOrgId, 
+                                    'role' => $userRole
+                                ]);
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            } else {
+                \Log::error('Failed to fetch organizations', ['status' => $orgResponse->status()]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to fetch user organization from org-svc: ' . $e->getMessage());
         }
+
+        // Check if we found user's organization
+        if (!$userRole) {
+            \Log::error('Could not determine user role', ['uid' => $uid]);
+            abort(403, 'Insufficient permissions2 - role not found');
+        }
+
+        // Only ADMIN and SUPER_ADMIN allowed
         if ($userRole !== 'ADMIN' && $userRole !== 'SUPER_ADMIN') {
             \Log::error('Invalid role', ['uid' => $uid, 'userRole' => $userRole]);
-            abort(403, 'Insufficient permissions');
+            abort(403, 'Insufficient permissions3');
         }
 
-        $data = $request->validate([
-            'organization_id' => 'required|integer',
+        // If user is ADMIN, force their organization_id
+        if ($userRole === 'ADMIN') {
+            if (!$userOrgId) {
+                \Log::error('Admin without organization', ['uid' => $uid, 'userRole' => $userRole]);
+                abort(403, 'Insufficient permissions4 - organization not found');
+            }
+
+            // Force organization_id to be the admin's org (ignore supplied value)
+            $request->merge(['organization_id' => $userOrgId]);
+            \Log::info('Admin creating league - using discovered organization_id', ['uid' => $uid, 'organization_id' => $userOrgId]);
+        }
+
+        // Validation: SUPER_ADMIN must provide organization_id, ADMIN will have it merged above
+        $validationRules = [
             'name' => 'required|string|min:2|max:100',
             'season' => 'required|in:Prolece,Leto,Jesen,Zima',
             'year' => 'required|integer|min:2020|max:2030',
             'total_rounds' => 'required|integer|min:1|max:50',
             'description' => 'nullable|string|max:1000',
-        ]);
+        ];
 
-        // Admin can only create leagues for their organization
+        // For SUPER_ADMIN, organization_id is required in request
+        if ($userRole === 'SUPER_ADMIN') {
+            $validationRules['organization_id'] = 'required|integer';
+        } else {
+            // For ADMIN, organization_id should now be merged
+            $validationRules['organization_id'] = 'required|integer';
+        }
+
+        $data = $request->validate($validationRules);
+
+        // Extra safety: Admin can only create leagues for their organization
         if ($userRole === 'ADMIN' && $data['organization_id'] !== $userOrgId) {
+            \Log::warning('Admin attempted to create league for different org', ['uid' => $uid, 'payload_org' => $data['organization_id'], 'discovered_org' => $userOrgId]);
             abort(403, 'You can only create leagues for your organization');
         }
 
@@ -141,7 +247,7 @@ class LeagueController extends Controller
             abort(403, 'You can only modify leagues for your organization');
         }
         if ($userRole !== 'ADMIN' && $userRole !== 'SUPER_ADMIN') {
-            abort(403, 'Insufficient permissions');
+            abort(403, 'Insufficient permissions5');
         }
 
         $data = $request->validate([
@@ -193,7 +299,7 @@ class LeagueController extends Controller
             abort(403, 'You can only delete leagues for your organization');
         }
         if ($userRole !== 'ADMIN' && $userRole !== 'SUPER_ADMIN') {
-            abort(403, 'Insufficient permissions');
+            abort(403, 'Insufficient permissions6');
         }
         
         // Check if league has any rounds played
@@ -223,11 +329,11 @@ class LeagueController extends Controller
         $league = League::findOrFail($leagueId);
         
         // Check permissions
-        if ($userRole === 'admin' && $league->organization_id !== $userOrgId) {
+        if ($userRole === 'ADMIN' && $league->organization_id !== $userOrgId) {
             abort(403, 'You can only manage teams for leagues in your organization');
         }
-        if ($userRole !== 'admin' && $userRole !== 'super_admin') {
-            abort(403, 'Insufficient permissions');
+        if ($userRole !== 'ADMIN' && $userRole !== 'SUPER_ADMIN') {
+            abort(403, 'Insufficient permissions7');
         }
         
         $data = $request->validate([
@@ -267,11 +373,11 @@ class LeagueController extends Controller
         $league = League::findOrFail($leagueId);
         
         // Check permissions
-        if ($userRole === 'admin' && $league->organization_id !== $userOrgId) {
+        if ($userRole === 'ADMIN' && $league->organization_id !== $userOrgId) {
             abort(403, 'You can only manage teams for leagues in your organization');
         }
-        if ($userRole !== 'admin' && $userRole !== 'super_admin') {
-            abort(403, 'Insufficient permissions');
+        if ($userRole !== 'ADMIN' && $userRole !== 'SUPER_ADMIN') {
+            abort(403, 'Insufficient permissions8');
         }
         
         // Check if team has played any rounds
@@ -309,7 +415,7 @@ class LeagueController extends Controller
             abort(403, 'You can only enter results for leagues in your organization');
         }
         if ($userRole !== 'ADMIN' && $userRole !== 'SUPER_ADMIN') {
-            abort(403, 'Insufficient permissions');
+            abort(403, 'Insufficient permissions9');
         }
         
         $data = $request->validate([

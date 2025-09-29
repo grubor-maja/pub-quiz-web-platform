@@ -16,6 +16,16 @@ class CheckRole
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
+        // Specijalna logika za kreiranje lige - samo SUPER_ADMIN (user_id 2) prolazi kroz punu proveru
+        if ($request->isMethod('post') && $request->is('*/leagues')) {
+            if ($user->id != 2) {
+                // Za sve ostale korisnike koji nisu SUPER_ADMIN, preskačemo CheckRole
+                // Liga će se kreirati za njihovu organizaciju na osnovu organization_id iz payload-a
+                return $next($request);
+            }
+            // SUPER_ADMIN (user_id 2) nastavlja sa standardnom proverom
+        }
+
         // Super admin ima pristup svemu osim quiz management-u
         if ($user->isSuperAdmin()) {
             // Super admin može upravljati članovima organizacije bez ograničenja

@@ -82,6 +82,7 @@ function LeagueForm() {
       // For admin users, automatically set their organization
       const dataToSend = {
         ...formData,
+        user_id: user.id,
         organization_id: user?.organization_role === 'ADMIN' ? user.organization_id : formData.organization_id
       }
 

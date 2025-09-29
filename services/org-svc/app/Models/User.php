@@ -12,17 +12,7 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-        protected $appends = ['organization_name', 'organization_role'];
-
-    public function getOrganizationNameAttribute()
-    {
-        return $this->attributes['organization_name'] ?? null;
-    }
-
-    public function getOrganizationRoleAttribute()
-    {
-        return $this->attributes['organization_role'] ?? null;
-    }
+    
 
     /**
      * The attributes that are mass assignable.

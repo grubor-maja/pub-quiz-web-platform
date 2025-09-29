@@ -154,6 +154,7 @@ class UserController extends Controller
                     if (isset($allMembers[$u->id])) {
                         $u->organization_name = $allMembers[$u->id]['organization_name'];
                         $u->organization_role = $allMembers[$u->id]['organization_role'];
+                        $u->organization_id = $allMembers[$u->id]['organization_id'] ?? null;
                     \Log::debug("informaciojeee", ['user' => $u]);
                     }
                 }
@@ -193,6 +194,7 @@ class UserController extends Controller
                             if (isset($allMembers[$u->id])) {
                                 $u->organization_name = $allMembers[$u->id]['organization_name'];
                                 $u->organization_role = $allMembers[$u->id]['organization_role'];
+                                $u->organization_id = $allMembers[$u->id]['organization_id'] ?? null;
                             }
                         }
                     
