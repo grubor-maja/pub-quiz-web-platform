@@ -180,6 +180,82 @@ body {
   text-decoration: none;
 }
 
+/* Dropdown Menu */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-toggle {
+  color: #e4e6ea;
+  text-decoration: none;
+  padding: 10px 16px;
+  margin: 0 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.dropdown-toggle:hover {
+  background: rgba(33, 74, 156, 0.15);
+  color: #214a9c;
+  transform: translateY(-1px);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background: rgba(15, 20, 25, 0.98);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  min-width: 220px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 1001;
+  overflow: hidden;
+}
+
+.dropdown:hover .dropdown-menu,
+.dropdown-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-item {
+  display: block;
+  padding: 12px 20px;
+  color: #e4e6ea;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover {
+  background: rgba(33, 74, 156, 0.15);
+  color: #214a9c;
+  padding-left: 24px;
+}
+
 /* Forms */
 .form-group {
   margin-bottom: 20px;
@@ -213,6 +289,34 @@ body {
 
 .form-control::placeholder {
   color: rgba(228, 230, 234, 0.5);
+}
+
+/* Select/Dropdown styling */
+.form-control select,
+select.form-control {
+  background: rgba(26, 31, 41, 0.9);
+  color: #e4e6ea;
+  cursor: pointer;
+}
+
+.form-control option,
+select.form-control option {
+  background: #1a1f29;
+  color: #e4e6ea;
+  padding: 8px;
+}
+
+/* Custom validation messages in Serbian */
+input:invalid,
+select:invalid,
+textarea:invalid {
+  border-color: rgba(220, 53, 69, 0.5);
+}
+
+input[required]:invalid:focus,
+select[required]:invalid:focus,
+textarea[required]:invalid:focus {
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
 }
 
 /* Tables */
@@ -257,8 +361,8 @@ body {
 /* Quiz Cards Grid */
 .quiz-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 32px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
   margin: 32px 0;
 }
 
@@ -356,12 +460,18 @@ body {
 
 .filter-select, .filter-input {
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(26, 31, 41, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
   color: #e4e6ea;
   font-size: 14px;
   transition: all 0.2s ease;
+}
+
+.filter-select option {
+  background: #1a1f29;
+  color: #e4e6ea;
+  padding: 8px;
 }
 
 .filter-select:focus, .filter-input:focus {
@@ -466,11 +576,14 @@ body {
   font-size: 52px;
   font-weight: 800;
   margin-bottom: 20px;
+  line-height: 1.1;
+}
+
+.hero-title:not([style*="background: none"]) {
   background: linear-gradient(135deg, #214a9c, #4a90e2);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  line-height: 1.1;
 }
 
 .hero-subtitle {
@@ -553,6 +666,25 @@ body {
   }
 }
 
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+/* Smooth fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .fade-in {
   animation: fadeInUp 0.6s ease forwards;
 }
@@ -580,6 +712,19 @@ body {
 }
 
 /* Logo hover effect in navbar */
+.navbar .container-fluid > div:first-child {
+  cursor: pointer;
+}
+
+.navbar .container-fluid > div:first-child img {
+  transition: all 0.3s ease;
+}
+
+.navbar .container-fluid > div:first-child:hover img {
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 8px rgba(148, 153, 79, 0.6));
+}
+
 .navbar .container-fluid > div:first-child:hover span:first-child {
   color: #A8B056 !important;
   transition: all 0.3s ease;
@@ -593,4 +738,33 @@ body {
 .navbar .container-fluid > div:first-child:hover span:nth-child(3) {
   color: #F5C555 !important;
   transition: all 0.3s ease;
+}
+
+/* Hero title colors and hover effects */
+.hero-title {
+  cursor: pointer;
+}
+
+.hero-title img {
+  transition: all 0.3s ease;
+}
+
+.hero-title:hover img {
+  transform: scale(1.2);
+}
+
+.hero-title span {
+  transition: all 0.3s ease;
+}
+
+.hero-title:hover span:nth-child(2) {
+  color: #A8B056 !important;
+}
+
+.hero-title:hover span:nth-child(3) {
+  color: #F5E7A3 !important;
+}
+
+.hero-title:hover span:nth-child(4) {
+  color: #F5C555 !important;
 }

@@ -8,166 +8,129 @@ use Illuminate\Support\Facades\Log;
 
 class QuizProxyController extends Controller
 {
-    public function getQuizzes(Request $request)
+    private string $base;
+    private string $secret;
+
+    public function __construct()
     {
+        $this->base   = rtrim(env('QUIZ_SVC_URL', 'http://localhost:8002'), '/');
+        $this->secret = env('INTERNAL_SHARED_SECRET', 'devsecret123');
+    }
+
+    private function headers(Request $req): array
+    {
+        $userId = null;
         try {
-            $res = Http::withHeaders($this->getInternalHeaders($request))
-                ->get($this->getQuizSvcUrl() . "/api/internal/quizzes");
-
-            $body = $res->body();
-            $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
-            $data = json_decode($body, true);
-            
-            return response()->json($data, $res->status());
-        } catch (\Throwable $e) {
-            Log::error('Error fetching quizzes from quiz-svc', [
-                'message' => $e->getMessage(),
-            ]);
-            return response()->json([
-                'error' => 'quiz-svc unavailable',
-                'message' => $e->getMessage(),
-            ], 503);
+            $userId = optional($req->user())->id;
+        } catch (\Exception $e) {
+            \Log::warning('User not authenticated for internal request');
         }
-    }
 
-    public function createQuiz(Request $request)
-    {
-        try {
-            $res = Http::withHeaders($this->getInternalHeaders($request))
-                ->post($this->getQuizSvcUrl() . '/api/internal/quizzes', $request->all());
-
-            $body = $res->body();
-            $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
-            $data = json_decode($body, true);
-            
-            return response()->json($data, $res->status());
-        } catch (\Throwable $e) {
-            Log::error('Error creating quiz via quiz-svc', ['message' => $e->getMessage()]);
-            return response()->json([
-                'error' => 'quiz-svc unavailable',
-                'message' => $e->getMessage(),
-            ], 503);
-        }
-    }
-
-    public function getQuiz(Request $request, $id)
-    {
-        try {
-            $res = Http::withHeaders($this->getInternalHeaders($request))
-                ->get($this->getQuizSvcUrl() . "/api/internal/quizzes/{$id}");
-
-            $body = $res->body();
-            $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
-            $data = json_decode($body, true);
-            
-            return response()->json($data, $res->status());
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => 'quiz-svc unavailable',
-                'message' => $e->getMessage(),
-            ], 503);
-        }
-    }
-
-    public function updateQuiz(Request $request, $id)
-    {
-        try {
-            $res = Http::withHeaders($this->getInternalHeaders($request))
-                ->put($this->getQuizSvcUrl() . "/api/internal/quizzes/{$id}", $request->all());
-
-            $body = $res->body();
-            $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
-            $data = json_decode($body, true);
-            
-            return response()->json($data, $res->status());
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => 'quiz-svc unavailable',
-                'message' => $e->getMessage(),
-            ], 503);
-        }
-    }
-
-    public function deleteQuiz(Request $request, $id)
-    {
-        try {
-            $res = Http::withHeaders($this->getInternalHeaders($request))
-                ->delete($this->getQuizSvcUrl() . "/api/internal/quizzes/{$id}");
-
-            $body = $res->body();
-            $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
-            $data = json_decode($body, true);
-            
-            return response()->json($data, $res->status());
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => 'quiz-svc unavailable',
-                'message' => $e->getMessage(),
-            ], 503);
-        }
-    }
-
-    public function getQuizzesByOrganization(Request $request, $orgId)
-    {
-        try {
-            $res = Http::withHeaders($this->getInternalHeaders($request))
-                ->get($this->getQuizSvcUrl() . "/api/internal/organizations/{$orgId}/quizzes");
-
-            $body = $res->body();
-            $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
-            $data = json_decode($body, true);
-            
-            return response()->json($data, $res->status());
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => 'quiz-svc unavailable',
-                'message' => $e->getMessage(),
-            ], 503);
-        }
-    }
-
-    public function health(Request $request)
-    {
-        try {
-            $res = Http::withHeaders($this->getInternalHeaders($request))
-                ->get($this->getQuizSvcUrl() . '/api/health');
-
-            $body = $res->body();
-            $body = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
-            $quizResponse = json_decode($body, true);
-
-            return response()->json([
-                'quiz_svc_status' => $res->successful() ? 'OK' : 'ERROR',
-                'quiz_response' => $quizResponse,
-                'user_id' => optional($request->user())->id,
-            ], $res->status());
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => 'quiz-svc unavailable',
-                'message' => $e->getMessage(),
-            ], 503);
-        }
-    }
-
-    private function getQuizSvcUrl()
-    {
-        return env('QUIZ_SVC_URL', 'http://localhost:8002');
-    }
-
-    private function getInternalHeaders(Request $request)
-    {
-        $headers = [
-            'X-Internal-Auth' => env('INTERNAL_SHARED_SECRET', 'devsecret123'),
-            'X-User-Id' => optional($request->user())->id ?? null,
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
+        return [
+            'X-Internal-Auth' => $this->secret,
+            'X-User-Id'       => $userId,
+            'Accept'          => 'application/json',
+            'Content-Type'    => 'application/json',
         ];
+    }
 
-        // Log::debug('Forwarding headers to quiz-svc', [
-        //     'X-Internal-Auth' => $headers['X-Internal-Auth'] ? '***present***' : 'MISSING',
-        //     'X-User-Id' => $headers['X-User-Id'] ?? 'anonymous',
-        // ]);
+    private function passThrough($resp)
+    {
+        $data = json_decode(ltrim($resp->body(), "\xEF\xBB\xBF\xFE\xFF\xFF\xFE"), true);
+        return response()->json($data, $resp->status());
+    }
 
-        return $headers;
+    public function getQuizzes(Request $req)
+    {
+        try {
+            $r = Http::withHeaders($this->headers($req))
+                ->get("{$this->base}/api/internal/quizzes");
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
+        }
+    }
+
+    public function getQuiz(Request $req, $id)
+    {
+        try {
+            $r = Http::withHeaders($this->headers($req))
+                ->get("{$this->base}/api/internal/quizzes/{$id}");
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
+        }
+    }
+
+    public function getQuizzesByOrganization(Request $req, $orgId)
+    {
+        try {
+            $r = Http::withHeaders($this->headers($req))
+                ->get("{$this->base}/api/internal/orgs/{$orgId}/quizzes");
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
+        }
+    }
+    public function getQuizzesByOrg(Request $req, $orgId)
+        {
+            try {
+                \Log::info('Forwarding headers to quiz-11', $this->headers($req));
+
+                $r = Http::withHeaders($this->headers($req))
+                    ->get("{$this->base}/api/internal/orgs/{$orgId}/quizzes");
+                \Log::info('Forwarding headers to quiz-svc', $this->headers($req));
+                return $this->passThrough($r);
+            } catch (\Throwable $e) {
+                return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
+            }
+        }
+    public function createQuiz(Request $req)
+    {
+        try {
+            $r = Http::withHeaders($this->headers($req))
+                ->post("{$this->base}/api/internal/quizzes", $req->all());
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
+        }
+    }
+
+    public function updateQuiz(Request $req, $id)
+    {
+        try {
+            $r = Http::withHeaders($this->headers($req))
+                ->put("{$this->base}/api/internal/quizzes/{$id}", $req->all());
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
+        }
+    }
+
+    public function deleteQuiz(Request $req, $id)
+    {
+        try {
+            $r = Http::withHeaders($this->headers($req))
+                ->delete("{$this->base}/api/internal/quizzes/{$id}");
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
+        }
+    }
+
+    public function health(Request $req)
+    {
+        try {
+            $r = Http::withHeaders($this->headers($req))
+                ->get("{$this->base}/api/health");
+
+            return response()->json([
+                'quiz_proxy' => 'ok',
+                'quiz_svc'   => $r->successful() ? 'ok' : 'error',
+                'quiz_data'  => json_decode($r->body(), true),
+            ], $r->status());
+        } catch (\Throwable $e) {
+            return response()->json(['quiz_proxy' => 'ok', 'quiz_svc' => 'error', 'msg' => $e->getMessage()], 503);
+        }
     }
 }

@@ -1,6 +1,5 @@
 const API_BASE_URL = 'http://localhost:8000/api'
 
-// Helper function to handle API responses
 const handleApiResponse = async (response) => {
   const contentType = response.headers.get('Content-Type')
   
@@ -14,7 +13,6 @@ const handleApiResponse = async (response) => {
         errorMessage = `HTTP error! status: ${response.status}`
       }
     } else {
-      // If we get HTML or other content, it might be a Laravel error page
       const text = await response.text()
       if (text.includes('<!DOCTYPE')) {
         errorMessage = `Backend service unavailable (port 8000 not running?)`
@@ -32,7 +30,6 @@ const handleApiResponse = async (response) => {
   }
 }
 
-// Helper function to get auth headers
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token')
   return {
@@ -41,9 +38,7 @@ const getAuthHeaders = () => {
   }
 }
 
-// Team CRUD operations
 export const teamService = {
-  // Get teams by organization
   async getTeamsByOrganization(organizationId) {
     try {
       const response = await fetch(`${API_BASE_URL}/orgs/${organizationId}/teams`, {
@@ -58,7 +53,6 @@ export const teamService = {
     }
   },
 
-  // Get team by ID
   async getTeamById(teamId) {
     try {
       const response = await fetch(`${API_BASE_URL}/teams/${teamId}`, {
@@ -77,7 +71,6 @@ export const teamService = {
     }
   },
 
-  // Create new team
   async createTeam(teamData) {
     try {
       const response = await fetch(`${API_BASE_URL}/teams`, {
@@ -93,7 +86,6 @@ export const teamService = {
     }
   },
 
-  // Update team
   async updateTeam(teamId, teamData) {
     try {
       const response = await fetch(`${API_BASE_URL}/teams/${teamId}`, {
@@ -114,7 +106,6 @@ export const teamService = {
     }
   },
 
-  // Delete team
   async deleteTeam(teamId) {
     try {
       const response = await fetch(`${API_BASE_URL}/teams/${teamId}`, {
@@ -134,7 +125,6 @@ export const teamService = {
     }
   },
 
-  // Apply team for quiz (pending status)
   async applyTeamForQuiz(teamId, quizId) {
     try {
       const response = await fetch(`${API_BASE_URL}/teams/${teamId}/apply-quiz`, {
@@ -155,7 +145,6 @@ export const teamService = {
     }
   },
 
-  // Approve team application (admin only)
   async approveTeamApplication(teamId, quizId) {
     try {
       const response = await fetch(`${API_BASE_URL}/teams/${teamId}/approve-quiz`, {
@@ -176,7 +165,6 @@ export const teamService = {
     }
   },
 
-  // Reject team application (admin only)
   async rejectTeamApplication(teamId, quizId) {
     try {
       const response = await fetch(`${API_BASE_URL}/teams/${teamId}/reject-quiz`, {
@@ -197,7 +185,6 @@ export const teamService = {
     }
   },
 
-  // Unregister team from quiz
   async unregisterTeamFromQuiz(teamId, quizId) {
     try {
       const response = await fetch(`${API_BASE_URL}/teams/${teamId}/unregister-quiz`, {
@@ -218,7 +205,6 @@ export const teamService = {
     }
   },
 
-  // Get teams registered for a quiz
   async getQuizTeams(quizId) {
     try {
       const response = await fetch(`${API_BASE_URL}/quizzes/${quizId}/teams`, {
@@ -238,9 +224,7 @@ export const teamService = {
   },
 }
 
-// Quiz service extensions for capacity
 export const quizService = {
-  // Update quiz with capacity
   async updateQuizWithCapacity(quizId, quizData) {
     try {
       const response = await fetch(`${API_BASE_URL}/quizzes/${quizId}`, {
@@ -261,7 +245,6 @@ export const quizService = {
     }
   },
 
-  // Create quiz with capacity
   async createQuizWithCapacity(quizData) {
     try {
       const response = await fetch(`${API_BASE_URL}/quizzes`, {
@@ -282,7 +265,6 @@ export const quizService = {
     }
   },
 
-  // Get quiz with team information
   async getQuizWithTeams(quizId) {
     try {
       const response = await fetch(`${API_BASE_URL}/quizzes/${quizId}`, {
@@ -298,7 +280,6 @@ export const quizService = {
   },
 }
 
-// Validation helpers
 export const teamValidation = {
   validateTeamName(name, existingTeams = []) {
     if (!name || name.trim().length < 2) {
@@ -330,7 +311,7 @@ export const teamValidation = {
   },
 
   validateEmail(email) {
-    if (!email) return null // Email is optional
+  if (!email) return null
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
@@ -340,9 +321,8 @@ export const teamValidation = {
   },
 
   validatePhone(phone) {
-    if (!phone) return null // Phone is optional
+  if (!phone) return null
     
-    // Basic phone validation - allows various formats
     const phoneRegex = /^[\+]?[0-9\s\-\(\)]{8,20}$/
     if (!phoneRegex.test(phone)) {
       return 'Please enter a valid phone number'
@@ -351,7 +331,7 @@ export const teamValidation = {
   },
 
   validateNotes(notes) {
-    if (!notes) return null // Notes are optional
+  if (!notes) return null
     
     if (notes.length > 1000) {
       return 'Notes must be less than 1000 characters'
@@ -359,7 +339,6 @@ export const teamValidation = {
     return null
   },
 
-  // Validate entire team object
   validateTeam(teamData, existingTeams = []) {
     const errors = {}
     

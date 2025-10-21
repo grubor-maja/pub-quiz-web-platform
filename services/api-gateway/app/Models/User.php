@@ -21,21 +21,18 @@ class User extends Authenticatable
      * @var list<string>
      */
 
-        protected $appends = ['organization_name', 'organization_role'];
-
-    protected $attributes = [
-        'organization_name' => null,
-        'organization_role' => null,
-    ];
+    protected $appends = ['organization_name', 'organization_role'];
 
     public function getOrganizationNameAttribute()
     {
-        return $this->attributes['organization_name'] ?? null;
+        $this->loadOrganizationData();
+        return $this->organizationData['organization_name'] ?? null;
     }
 
     public function getOrganizationRoleAttribute()
     {
-        return $this->attributes['organization_role'] ?? null;
+        $this->loadOrganizationData();
+        return $this->organizationData['organization_role'] ?? null;
     }
     protected $fillable = [
         'name',

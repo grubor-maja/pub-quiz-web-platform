@@ -1,9 +1,16 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { leagueService } from '../services/leagueService'
 import { teamService } from '../services/teamService'
 import { useAuth } from '../contexts/AuthContext'
-
+import LoadingDragon from '../components/LoadingDragon'
+import { FaRegEdit } from 'react-icons/fa'
+import {RiDeleteBin6Line, RiTeamFill, RiTeamLine} from 'react-icons/ri'
+import {PiCalendar, PiList, PiTrophy} from "react-icons/pi";
+import {AiFillCalendar} from "react-icons/ai";
+import {BiTable} from "react-icons/bi";
+import {HiDocument} from "react-icons/hi";
+import { PiListNumbers } from 'react-icons/pi';
 function ManageLeagues() {
   const [leagues, setLeagues] = useState([])
   const [loading, setLoading] = useState(true)
@@ -11,17 +18,23 @@ function ManageLeagues() {
   const [availableTeams, setAvailableTeams] = useState([])
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showRoundModal, setShowRoundModal] = useState(false)
+  const [selectedRound, setSelectedRound] = useState(1)
+  const [roundResults, setRoundResults] = useState([])
+  const [showCreateTeam, setShowCreateTeam] = useState(false)
+  const [newTeamName, setNewTeamName] = useState('')
+  const [newTeamMembers, setNewTeamMembers] = useState(4)
+  const [newTeamPhone, setNewTeamPhone] = useState('')
+  const [creatingTeam, setCreatingTeam] = useState(false)
   const { user } = useAuth()
   const navigate = useNavigate()
 
   const fetchLeagues = async () => {
     try {
       if (user?.role === 'super_admin') {
-        // Super admin can see all leagues
         const data = await leagueService.getAllLeagues()
         setLeagues(data || [])
       } else if (user?.organization_id) {
-        // Admin can see only their organization's leagues
         const data = await leagueService.getLeaguesByOrganization(user.organization_id)
         setLeagues(data || [])
       }
@@ -98,14 +111,98 @@ function ManageLeagues() {
     }
   }
 
+  const handleEnterResults = (league) => {
+    if (!league.teams || league.teams.length === 0) {
+      setError('Liga mora imati timove pre unosa rezultata')
+      return
+    }
+    
+    setSelectedLeague(league)
+    setSelectedRound(1)
+    // Initialize results for all teams in league
+    const initialResults = league.teams.map(team => ({
+      team_id: team.id,
+      team_name: team.name,
+      points: 0,
+      position: null,
+      notes: ''
+    }))
+    setRoundResults(initialResults)
+    setShowRoundModal(true)
+    setError('') // Clear any previous errors
+  }
+
+  const handleRoundSubmit = async (e) => {
+    e.preventDefault()
+    if (!selectedLeague || !roundResults.length) return
+
+    try {
+      setError('')
+      const roundData = {
+        round_number: selectedRound,
+        results: roundResults.map(result => ({
+          team_id: result.team_id,
+          points: parseInt(result.points) || 0,
+          position: result.position ? parseInt(result.position) : null,
+          notes: result.notes || ''
+        }))
+      }
+      
+      await leagueService.enterRoundResults(selectedLeague.id, roundData)
+      setSuccess(`Rezultati ${selectedRound}. kola su uspešno uneti`)
+      setShowRoundModal(false)
+      fetchLeagues() // Refresh data
+    } catch (err) {
+      setError('Greška pri unosu rezultata: ' + err.message)
+    }
+  }
+
+  const updateRoundResult = (teamId, field, value) => {
+    setRoundResults(prev => prev.map(result => 
+      result.team_id === teamId 
+        ? { ...result, [field]: value }
+        : result
+    ))
+  }
+
+  const handleCreateNewTeam = async (e) => {
+    e.preventDefault()
+    if (!newTeamName.trim()) {
+      setError('Unesite naziv tima')
+      return
+    }
+
+    try {
+      setCreatingTeam(true)
+      setError('')
+
+      const teamData = {
+        name: newTeamName.trim(),
+        organization_id: user.organization_id,
+        member_count: parseInt(newTeamMembers) || 4,
+        contact_phone: newTeamPhone.trim() || null
+      }
+
+      await teamService.createTeam(teamData)
+      setSuccess('Tim je uspešno kreiran!')
+      setNewTeamName('')
+      setNewTeamMembers(4)
+      setNewTeamPhone('')
+      setShowCreateTeam(false)
+      await fetchAvailableTeams() // Refresh teams list
+    } catch (err) {
+      console.error('Create team error:', err)
+      setError('Greška pri kreiranju tima: ' + err.message)
+    } finally {
+      setCreatingTeam(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="main-content">
         <div className="container-fluid">
-          <div className="loading">
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏆</div>
-            Učitavanje liga...
-          </div>
+          <LoadingDragon />
         </div>
       </div>
     )
@@ -170,9 +267,9 @@ function ManageLeagues() {
           
           {leagues.length === 0 ? (
             <div className="empty-state" style={{ margin: '40px 0' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏆</div>
-              <h3>Nema kreiranje liga</h3>
-              <p>Počnite kreiranje prve lige za vašu organizaciju.</p>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}><PiTrophy/></div>
+              <h3>Nema kreiranih liga</h3>
+              <p>Počnite kreiranje prve lige za Vašu organizaciju.</p>
             </div>
           ) : (
             <div style={{ padding: '20px' }}>
@@ -187,7 +284,7 @@ function ManageLeagues() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '16px' }}>
                     <div>
                       <h3 style={{ margin: '0 0 8px 0', color: '#e4e6ea', fontSize: '20px' }}>
-                        🏆 {league.name}
+                        <PiTrophy/> {league.name}
                         {user?.role === 'super_admin' && (
                           <span style={{ 
                             fontSize: '12px', 
@@ -200,9 +297,9 @@ function ManageLeagues() {
                         )}
                       </h3>
                       <div style={{ display: 'flex', gap: '16px', fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
-                        <span>📅 {league.season} {league.year}</span>
-                        <span>🎯 {league.total_rounds} kola</span>
-                        <span>👥 {league.teams?.length || 0} timova</span>
+                        <span><PiCalendar/> {league.season} {league.year}</span>
+                        <span><PiListNumbers/> {league.completed_rounds_count || 0} / {league.total_rounds} kola</span>
+                        <span><RiTeamLine/> {league.teams?.length || 0} timova</span>
                         <span style={{
                           color: league.is_active ? '#28a745' : '#dc3545'
                         }}>
@@ -216,24 +313,32 @@ function ManageLeagues() {
                       )}
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <button 
                         onClick={() => setSelectedLeague(selectedLeague?.id === league.id ? null : league)}
                         className="btn btn-sm btn-primary"
                       >
-                        👥 {selectedLeague?.id === league.id ? 'Sakrij' : 'Timovi'}
+                        <RiTeamFill style={{ marginRight: '4px' }} /> {selectedLeague?.id === league.id ? 'Sakrij' : 'Timovi'}
                       </button>
-                      <button 
+                      <button
+                        onClick={() => handleEnterResults(league)}
+                        className="btn btn-sm btn-success"
+                        disabled={!league.teams?.length}
+                        title={!league.teams?.length ? 'Dodajte timove pre unosa rezultata' : 'Unesi rezultate kola'}
+                      >
+                        <HiDocument/> Rezultati
+                      </button>
+                      <button
                         onClick={() => navigate(`/league/${league.id}`)}
                         className="btn btn-sm btn-secondary"
                       >
-                        📊 Tabela
+                        <BiTable/> Tabela
                       </button>
                       <button 
                         onClick={() => handleEditLeague(league)}
                         className="btn btn-sm btn-secondary"
                       >
-                        ✏️ Edituj
+                        <FaRegEdit style={{ marginRight: '4px' }} /> Edituj
                       </button>
                       <button 
                         onClick={() => handleDeleteLeague(league.id)}
@@ -244,7 +349,7 @@ function ManageLeagues() {
                           border: '1px solid rgba(220, 53, 69, 0.3)'
                         }}
                       >
-                        🗑️ Obriši
+                        <RiDeleteBin6Line style={{ marginRight: '4px' }} /> Obriši
                       </button>
                     </div>
                   </div>
@@ -276,7 +381,14 @@ function ManageLeagues() {
                                 borderRadius: '6px',
                                 border: '1px solid rgba(40, 167, 69, 0.2)'
                               }}>
-                                <span style={{ color: '#e4e6ea' }}>{team.name}</span>
+                                <span style={{ color: '#e4e6ea' }}>
+                                  {team.name} 
+                                  {(team.pivot?.total_points !== undefined || team.total_points !== undefined) && (
+                                    <span style={{ marginLeft: '8px', color: 'rgba(228, 230, 234, 0.6)' }}>
+                                      ({team.pivot?.total_points ?? team.total_points} bodova)
+                                    </span>
+                                  )}
+                                </span>
                                 <button
                                   onClick={() => handleRemoveTeamFromLeague(league.id, team.id)}
                                   className="btn btn-xs"
@@ -319,7 +431,108 @@ function ManageLeagues() {
                             ))}
                           </div>
                         ) : (
-                          <p style={{ color: 'rgba(228, 230, 234, 0.6)' }}>Nema dostupnih timova</p>
+                          <p style={{ color: 'rgba(228, 230, 234, 0.6)' }}>Nema dostupnih timova za dodavanje</p>
+                        )}
+                      </div>
+
+                      {/* Create New Team */}
+                      <div style={{ marginTop: '24px' }}>
+                        <button
+                          onClick={() => setShowCreateTeam(!showCreateTeam)}
+                          className="btn btn-sm btn-primary"
+                          style={{ marginBottom: '16px' }}
+                        >
+                          {showCreateTeam ? '−' : '+'} Kreiraj novi tim
+                        </button>
+
+                        {showCreateTeam && (
+                          <form onSubmit={handleCreateNewTeam} style={{
+                            padding: '16px',
+                            background: 'rgba(40, 167, 69, 0.1)',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(40, 167, 69, 0.2)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px'
+                          }}>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '8px', color: '#e4e6ea' }}>
+                                Naziv tima:
+                              </label>
+                              <input
+                                type="text"
+                                value={newTeamName}
+                                onChange={(e) => setNewTeamName(e.target.value)}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(228, 230, 234, 0.3)',
+                                  backgroundColor: '#3c3c3c',
+                                  color: '#e4e6ea',
+                                  width: '100%'
+                                }}
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '8px', color: '#e4e6ea' }}>
+                                Broj članova:
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={newTeamMembers}
+                                onChange={(e) => setNewTeamMembers(e.target.value)}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(228, 230, 234, 0.3)',
+                                  backgroundColor: '#3c3c3c',
+                                  color: '#e4e6ea',
+                                  width: '100%'
+                                }}
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '8px', color: '#e4e6ea' }}>
+                                Kontakt telefon:
+                              </label>
+                              <input
+                                type="text"
+                                value={newTeamPhone}
+                                onChange={(e) => setNewTeamPhone(e.target.value)}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(228, 230, 234, 0.3)',
+                                  backgroundColor: '#3c3c3c',
+                                  color: '#e4e6ea',
+                                  width: '100%'
+                                }}
+                                placeholder="Opcionalno"
+                              />
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                              <button
+                                type="button"
+                                onClick={() => setShowCreateTeam(false)}
+                                className="btn btn-secondary"
+                              >
+                                Otkaži
+                              </button>
+                              <button
+                                type="submit"
+                                className="btn btn-primary"
+                                disabled={creatingTeam}
+                              >
+                                {creatingTeam ? 'Kreiranje...' : 'Kreiraj tim'}
+                              </button>
+                            </div>
+                          </form>
                         )}
                       </div>
                     </div>
@@ -329,6 +542,172 @@ function ManageLeagues() {
             </div>
           )}
         </div>
+
+        {/* Enter Round Results Modal */}
+        {showRoundModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              backgroundColor: '#2c2c2c',
+              padding: '24px',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '800px',
+              maxHeight: '90vh',
+              overflow: 'auto'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0, color: '#e4e6ea' }}>
+                  Unos rezultata - {selectedLeague?.name}
+                </h3>
+                <button
+                  onClick={() => setShowRoundModal(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#e4e6ea',
+                    fontSize: '24px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleRoundSubmit}>
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', color: '#e4e6ea' }}>
+                    Kolo:
+                  </label>
+                  <select
+                    value={selectedRound}
+                    onChange={(e) => setSelectedRound(parseInt(e.target.value))}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid rgba(228, 230, 234, 0.3)',
+                      backgroundColor: '#3c3c3c',
+                      color: '#e4e6ea',
+                      width: '150px'
+                    }}
+                  >
+                    {Array.from({ length: selectedLeague?.total_rounds || 10 }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {i + 1}. kolo
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: 'rgba(228, 230, 234, 0.1)' }}>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#e4e6ea', border: '1px solid rgba(228, 230, 234, 0.2)' }}>
+                          Tim
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#e4e6ea', border: '1px solid rgba(228, 230, 234, 0.2)' }}>
+                          Poeni
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#e4e6ea', border: '1px solid rgba(228, 230, 234, 0.2)' }}>
+                          Pozicija
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#e4e6ea', border: '1px solid rgba(228, 230, 234, 0.2)' }}>
+                          Napomene
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {roundResults.map((result) => (
+                        <tr key={result.team_id}>
+                          <td style={{ padding: '8px 12px', color: '#e4e6ea', border: '1px solid rgba(228, 230, 234, 0.2)' }}>
+                            {result.team_name}
+                          </td>
+                          <td style={{ padding: '8px 12px', border: '1px solid rgba(228, 230, 234, 0.2)' }}>
+                            <input
+                              type="number"
+                              min="0"
+                              value={result.points}
+                              onChange={(e) => updateRoundResult(result.team_id, 'points', e.target.value)}
+                              style={{
+                                width: '80px',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(228, 230, 234, 0.3)',
+                                backgroundColor: '#3c3c3c',
+                                color: '#e4e6ea'
+                              }}
+                              required
+                            />
+                          </td>
+                          <td style={{ padding: '8px 12px', border: '1px solid rgba(228, 230, 234, 0.2)' }}>
+                            <input
+                              type="number"
+                              min="1"
+                              value={result.position || ''}
+                              onChange={(e) => updateRoundResult(result.team_id, 'position', e.target.value)}
+                              style={{
+                                width: '80px',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(228, 230, 234, 0.3)',
+                                backgroundColor: '#3c3c3c',
+                                color: '#e4e6ea'
+                              }}
+                              placeholder="Opciono"
+                            />
+                          </td>
+                          <td style={{ padding: '8px 12px', border: '1px solid rgba(228, 230, 234, 0.2)' }}>
+                            <input
+                              type="text"
+                              value={result.notes}
+                              onChange={(e) => updateRoundResult(result.team_id, 'notes', e.target.value)}
+                              style={{
+                                width: '150px',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(228, 230, 234, 0.3)',
+                                backgroundColor: '#3c3c3c',
+                                color: '#e4e6ea'
+                              }}
+                              placeholder="Napomene..."
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowRoundModal(false)}
+                    className="btn btn-secondary"
+                  >
+                    Otkaži
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                  >
+                    Sačuvaj rezultate
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

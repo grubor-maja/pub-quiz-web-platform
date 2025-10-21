@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import LoadingDragon from './components/LoadingDragon'
 import Dashboard from './pages/Dashboard'
 import QuizDetails from './pages/QuizDetails'
 import Login from './pages/Login'
@@ -10,7 +11,10 @@ import EditUser from './pages/EditUser'
 import ManageOrganizations from './pages/ManageOrganizations'
 import AddOrganization from './pages/AddOrganization'
 import EditOrganization from './pages/EditOrganization'
+import OrganizationDetails from './pages/OrganizationDetails'
+import OrganizationManagement from './pages/OrganizationManagement'
 import ManageQuizzes from './pages/ManageQuizzes'
+import AddQuiz from './pages/AddQuiz'
 import ManageLeagues from './pages/ManageLeagues'
 import LeagueForm from './pages/LeagueForm'
 import EditQuiz from './pages/EditQuiz'
@@ -19,10 +23,21 @@ import LeagueDetails from './pages/LeagueDetails'
 import './App.css'
 
 function AppContent() {
-  const { user, logout } = useAuth()
+  const { user, logout, loading } = useAuth()
 
   const handleLogout = () => {
     logout()
+  }
+
+  // Show loading screen while checking authentication
+  if (loading) {
+    return (
+      <div className="main-content">
+        <div className="container-fluid">
+          <LoadingDragon />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -33,10 +48,20 @@ function AppContent() {
           <div style={{ 
             fontSize: '28px', 
             fontWeight: 'bold',
+            fontFamily: "'Unkempt', cursive",
             display: 'flex',
             alignItems: 'center',
-            gap: '4px'
+            gap: '8px'
           }}>
+            <img 
+              src="/logo1.png" 
+              alt="Dragon Logo" 
+              style={{ 
+                width: '40px', 
+                height: '40px', 
+                marginRight: '8px' 
+              }} 
+            />
             <span style={{ color: '#94994F' }}>Ko</span>
             <span style={{ color: '#F2E394' }}>Zna</span>
             <span style={{ color: '#F2B441' }}>Zna</span>
@@ -45,21 +70,43 @@ function AppContent() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             {user ? (
               <>
-                <Link to="/" className="nav-link">Dashboard</Link>
-                <Link to="/leagues" className="nav-link">Leagues</Link>
-                <Link to="/manage/users" className="nav-link">Manage Users</Link>
-                <Link to="/manage/organizations" className="nav-link">Manage Organizations</Link>
-                <Link to="/manage/quizzes" className="nav-link">Manage Quizzes</Link>
-                <Link to="/manage/leagues" className="nav-link">Manage Leagues</Link>
-                <span className="nav-link">{user.name} ({user.role})</span>
-                <button onClick={handleLogout} className="btn btn-secondary btn-sm">Logout</button>
+                <Link to="/" className="nav-link">Kvizovi</Link>
+                <Link to="/leagues" className="nav-link">Lige</Link>
+                
+                {/* Organization members, admins, and super admins see management dropdown */}
+                {(user.organization_id || user.is_super_admin) && (
+                  <div className="dropdown">
+                    <button className="dropdown-toggle">
+                      Upravljanje
+                      <span style={{ fontSize: '10px' }}>▼</span>
+                    </button>
+                    <div className="dropdown-menu">
+                      <Link to="/manage/quizzes" className="dropdown-item">Kvizovima</Link>
+                      <Link to="/manage/leagues" className="dropdown-item">Ligama</Link>
+                      {(user.organization_id && (user.organization_role === 'admin' || user.organization_role === 'ADMIN')) && (
+                        <Link to="/manage/organization" className="dropdown-item">Organizacijom</Link>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Super admins see user and organization management separately */}
+                {user.is_super_admin && (
+                  <>
+                    <Link to="/manage/users" className="nav-link">Korisnici</Link>
+                    <Link to="/manage/organizations" className="nav-link">Organizacije</Link>
+                  </>
+                )}
+                
+                <span className="nav-link">{user.name}</span>
+                <button onClick={handleLogout} className="btn btn-secondary btn-sm">Odjavi se</button>
               </>
             ) : (
               <>
-                <Link to="/" className="nav-link">Home</Link>
-                <Link to="/leagues" className="nav-link">Leagues</Link>
-                <Link to="/login" className="nav-link">Login</Link>
-                <Link to="/register" className="nav-link">Register</Link>
+                <Link to="/" className="nav-link">Kvizovi</Link>
+                <Link to="/leagues" className="nav-link">Lige</Link>
+                <Link to="/login" className="nav-link">Prijavi se</Link>
+                <Link to="/register" className="nav-link">Registruj se</Link>
               </>
             )}
           </div>
@@ -71,18 +118,40 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/quiz/:id" element={<QuizDetails />} />
-          <Route path="/manage/users" element={<ManageUsers />} />
-          <Route path="/manage/users/add" element={<AddUser />} />
-          <Route path="/manage/users/edit/:id" element={<EditUser />} />
-          <Route path="/manage/organizations" element={<ManageOrganizations />} />
-          <Route path="/manage/organizations/add" element={<AddOrganization />} />
-          <Route path="/manage/organizations/edit/:id" element={<EditOrganization />} />
-          <Route path="/manage/quizzes" element={<ManageQuizzes />} />
-          <Route path="/manage/leagues" element={<ManageLeagues />} />
-          <Route path="/league/create" element={<LeagueForm />} />
-          <Route path="/league/edit/:id" element={<LeagueForm />} />
+          <Route path="/leagues" element={<Leagues />} />
           <Route path="/league/:id" element={<LeagueDetails />} />
-          <Route path="/quiz/:id/edit" element={<EditQuiz />} />
+          
+          {/* Routes for organization members, admins, and super admins */}
+          {(user.organization_id || user.is_super_admin) && (
+            <>
+              <Route path="/manage/quizzes" element={<ManageQuizzes />} />
+              <Route path="/manage/quizzes/add" element={<AddQuiz />} />
+              <Route path="/quiz/:id/edit" element={<EditQuiz />} />
+              <Route path="/manage/leagues" element={<ManageLeagues />} />
+              <Route path="/league/create" element={<LeagueForm />} />
+              <Route path="/league/edit/:id" element={<LeagueForm />} />
+            </>
+          )}
+          
+          {/* Routes only for super admin */}
+          {user.is_super_admin && (
+            <>
+              <Route path="/manage/users" element={<ManageUsers />} />
+              <Route path="/manage/users/add" element={<AddUser />} />
+              <Route path="/manage/users/edit/:id" element={<EditUser />} />
+              <Route path="/manage/organizations/:id" element={<OrganizationDetails />} />
+              <Route path="/manage/organizations" element={<ManageOrganizations />} />
+              <Route path="/manage/organizations/:id" element={<OrganizationDetails />} />
+              <Route path="/manage/organizations/add" element={<AddOrganization />} />
+              <Route path="/manage/organizations/edit/:id" element={<EditOrganization />} />
+            </>
+          )}
+
+          {/* Route for organization admins to manage their own organization */}
+          {(user.organization_id && (user.organization_role === 'admin' || user.organization_role === 'ADMIN')) && (
+            <Route path="/manage/organization" element={<OrganizationManagement />} />
+          )}
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       ) : (

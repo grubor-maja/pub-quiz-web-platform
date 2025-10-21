@@ -4,372 +4,192 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\Response as HttpResponse;
 
 class LeagueProxyController extends Controller
 {
-    private $quizServiceUrl;
+    private string $base;
 
     public function __construct()
     {
-        $this->quizServiceUrl = config('services.quiz_service.url') . '/api/internal';
+        // npr. services.quiz_service.url = http://quiz-svc:8003
+        $this->base = rtrim(config('services.quiz_service.url', env('QUIZ_SVC_URL', 'http://localhost:8003')), '/') . '/api/internal';
     }
 
-    /**
-     * Get all leagues (public)
-     */
+    /** ------------------------- helpers ------------------------- */
+
+    private function headers(Request $request): array
+    {
+        return [
+            'X-Internal-Auth' => config('services.internal_auth_token', env('INTERNAL_SHARED_SECRET', 'devsecret123')),
+            'X-User-Id'       => optional($request->user())->id, // može i null
+            'Accept'          => 'application/json',
+            'Content-Type'    => 'application/json',
+        ];
+    }
+
+    private function json(HttpResponse $resp)
+    {
+        // robustno dekodiranje zbog BOM-a / duplog JSON-a
+        $body  = $resp->body() ?? '';
+        $clean = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
+        $data  = json_decode($clean, true);
+        if (json_last_error() === JSON_ERROR_NONE) return $data;
+
+        $str = json_decode($clean, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_string($str)) {
+            $data2 = json_decode($str, true);
+            if (json_last_error() === JSON_ERROR_NONE) return $data2;
+        }
+
+        Log::warning('LeagueProxy json decode failed', [
+            'status' => $resp->status(),
+            'len'    => strlen($body),
+            'err'    => json_last_error_msg(),
+            'peek'   => substr($clean, 0, 128),
+        ]);
+        return null;
+    }
+
+    private function passThrough(HttpResponse $resp)
+    {
+        $payload = $this->json($resp);
+        return response()->json($payload, $resp->status());
+    }
+
+    /** ------------------------- public GET ------------------------- */
+
     public function getLeagues(Request $request)
     {
         try {
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $request->user()->id ?? 'guest',
-            ])->get("{$this->quizServiceUrl}/leagues");
-
-            if ($response->failed()) {
-                return response()->json([
-                    'error' => 'Failed to fetch leagues',
-                    'details' => $response->json()
-                ], $response->status());
-            }
-
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Service communication error',
-                'message' => $e->getMessage()
-            ], 500);
+            $r = Http::timeout(10)->withHeaders($this->headers($request))
+                ->get("{$this->base}/leagues");
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Service communication error', 'message' => $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Get leagues by organization
-     */
     public function getLeaguesByOrganization(Request $request, $orgId)
     {
         try {
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $request->user()->id ?? 'guest',
-            ])->get("{$this->quizServiceUrl}/orgs/{$orgId}/leagues");
-
-            if ($response->failed()) {
-                return response()->json([
-                    'error' => 'Failed to fetch organization leagues',
-                    'details' => $response->json()
-                ], $response->status());
-            }
-
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Service communication error',
-                'message' => $e->getMessage()
-            ], 500);
+            $r = Http::timeout(10)->withHeaders($this->headers($request))
+                ->get("{$this->base}/orgs/{$orgId}/leagues");
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Service communication error', 'message' => $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Get league by ID
-     */
     public function getLeague(Request $request, $id)
     {
         try {
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $request->user()->id ?? 'guest',
-            ])->get("{$this->quizServiceUrl}/leagues/{$id}");
-
-            if ($response->failed()) {
-                return response()->json([
-                    'error' => 'Failed to fetch league',
-                    'details' => $response->json()
-                ], $response->status());
-            }
-
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Service communication error',
-                'message' => $e->getMessage()
-            ], 500);
+            $r = Http::timeout(10)->withHeaders($this->headers($request))
+                ->get("{$this->base}/leagues/{$id}");
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Service communication error', 'message' => $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Create league
-     */
-    public function createLeague(Request $request)
-    {
-        try {
-            $user = $request->user();
-            
-            // Ensure organization data is loaded
-            if ($user) {
-                $user->loadOrganizationData();
-            }
-            
-            // Debug logging
-            \Log::info('League creation proxy', [
-                'user_id' => $user ? $user->id : 'null',
-                'user_role' => $user ? $user->role : 'null',
-                'user_org_id' => $user ? $user->organization_id : 'null',
-                'user_org_role' => $user ? $user->organization_role : 'null',
-                'request_data' => $request->all()
-            ]);
-            \Log::info("SALJEM OVDE");
-            \Log::info("{$this->quizServiceUrl}/leagues", $request->all());
-            
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $user ? $user->id : null,
-                'X-User-Role' => $user ? $user->organization_role : null,
-                'X-User-Org-Id' => $user ? $user->organization_id : null,
-                'Content-Type' => 'application/json',
-            ])->post("{$this->quizServiceUrl}/leagues", $request->all());
-
-            if ($response->failed()) {
-                \Log::error('League creation failed', [
-                    'status' => $response->status(),
-                    'response' => $response->json(),
-                    'error' => 'Failed to create league',
-                    'request_data' => $request->all()
-                ]);
-                return response()->json([
-                    'error' => 'Failed to create league',
-                    'details' => $response->json()
-                ], $response->status());
-            }
-
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Service communication error',
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Update league
-     */
-    public function updateLeague(Request $request, $id)
-    {
-        try {
-            $user = $request->user();
-            if ($user) {
-                $user->loadOrganizationData();
-            }
-            
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $user ? $user->id : null,
-                'X-User-Role' => $user ? $user->organization_role : null,
-                'X-User-Org-Id' => $user ? $user->organization_id : null,
-                'Content-Type' => 'application/json',
-            ])->put("{$this->quizServiceUrl}/leagues/{$id}", $request->all());
-
-            if ($response->failed()) {
-                return response()->json([
-                    'error' => 'Failed to update league',
-                    'details' => $response->json()
-                ], $response->status());
-            }
-
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Service communication error',
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Delete league
-     */
-    public function deleteLeague(Request $request, $id)
-    {
-        try {
-            $user = $request->user();
-            if ($user) {
-                $user->loadOrganizationData();
-            }
-            
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $user ? $user->id : null,
-                'X-User-Role' => $user ? $user->organization_role : null,
-                'X-User-Org-Id' => $user ? $user->organization_id : null,
-            ])->delete("{$this->quizServiceUrl}/leagues/{$id}");
-
-            if ($response->failed()) {
-                return response()->json([
-                    'error' => 'Failed to delete league',
-                    'details' => $response->json()
-                ], $response->status());
-            }
-
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Service communication error',
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Add team to league
-     */
-    public function addTeamToLeague(Request $request, $leagueId)
-    {
-        try {
-            $user = $request->user();
-            if ($user) {
-                $user->loadOrganizationData();
-            }
-            
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $user ? $user->id : null,
-                'X-User-Role' => $user ? $user->organization_role : null,
-                'X-User-Org-Id' => $user ? $user->organization_id : null,
-                'Content-Type' => 'application/json',
-            ])->post("{$this->quizServiceUrl}/leagues/{$leagueId}/teams", $request->all());
-
-            if ($response->failed()) {
-                return response()->json([
-                    'error' => 'Failed to add team to league',
-                    'details' => $response->json()
-                ], $response->status());
-            }
-
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Service communication error',
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Remove team from league
-     */
-    public function removeTeamFromLeague(Request $request, $leagueId, $teamId)
-    {
-        try {
-            $user = $request->user();
-            if ($user) {
-                $user->loadOrganizationData();
-            }
-            
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $user ? $user->id : null,
-                'X-User-Role' => $user ? $user->organization_role : null,
-                'X-User-Org-Id' => $user ? $user->organization_id : null,
-            ])->delete("{$this->quizServiceUrl}/leagues/{$leagueId}/teams/{$teamId}");
-
-            if ($response->failed()) {
-                return response()->json([
-                    'error' => 'Failed to remove team from league',
-                    'details' => $response->json()
-                ], $response->status());
-            }
-
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Service communication error',
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Enter round results
-     */
-    public function enterRoundResults(Request $request, $leagueId)
-    {
-        try {
-            $user = $request->user();
-            if ($user) {
-                $user->loadOrganizationData();
-            }
-            
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $user ? $user->id : null,
-                'X-User-Role' => $user ? $user->organization_role : null,
-                'X-User-Org-Id' => $user ? $user->organization_id : null,
-                'Content-Type' => 'application/json',
-            ])->post("{$this->quizServiceUrl}/leagues/{$leagueId}/rounds", $request->all());
-
-            if ($response->failed()) {
-                return response()->json([
-                    'error' => 'Failed to enter round results',
-                    'details' => $response->json()
-                ], $response->status());
-            }
-
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Service communication error',
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Get league table
-     */
     public function getLeagueTable(Request $request, $leagueId)
     {
         try {
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $request->user()->id ?? 'guest',
-            ])->get("{$this->quizServiceUrl}/leagues/{$leagueId}/table");
-
-            if ($response->failed()) {
-                return response()->json([
-                    'error' => 'Failed to fetch league table',
-                    'details' => $response->json()
-                ], $response->status());
-            }
-
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Service communication error',
-                'message' => $e->getMessage()
-            ], 500);
+            $r = Http::timeout(10)->withHeaders($this->headers($request))
+                ->get("{$this->base}/leagues/{$leagueId}/table");
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Service communication error', 'message' => $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Health check
-     */
+    /** ------------------------- mutations (auth:sanctum na rutama) ------------------------- */
+
+    public function createLeague(Request $request)
+    {
+        try {
+            $r = Http::timeout(15)->withHeaders($this->headers($request))
+                ->post("{$this->base}/leagues", $request->all());
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Service communication error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function updateLeague(Request $request, $id)
+    {
+        try {
+            $r = Http::timeout(15)->withHeaders($this->headers($request))
+                ->put("{$this->base}/leagues/{$id}", $request->all());
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Service communication error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function deleteLeague(Request $request, $id)
+    {
+        try {
+            $r = Http::timeout(15)->withHeaders($this->headers($request))
+                ->delete("{$this->base}/leagues/{$id}");
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Service communication error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function addTeamToLeague(Request $request, $leagueId)
+    {
+        try {
+            $r = Http::timeout(15)->withHeaders($this->headers($request))
+                ->post("{$this->base}/leagues/{$leagueId}/teams", $request->all());
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Service communication error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function removeTeamFromLeague(Request $request, $leagueId, $teamId)
+    {
+        try {
+            $r = Http::timeout(15)->withHeaders($this->headers($request))
+                ->delete("{$this->base}/leagues/{$leagueId}/teams/{$teamId}");
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Service communication error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function enterRoundResults(Request $request, $leagueId)
+    {
+        try {
+            $r = Http::timeout(15)->withHeaders($this->headers($request))
+                ->post("{$this->base}/leagues/{$leagueId}/rounds", $request->all());
+            return $this->passThrough($r);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Service communication error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /** ------------------------- health ------------------------- */
+
     public function health(Request $request)
     {
         try {
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'X-User-Id' => $request->user()->id ?? 'guest',
-            ])->get(config('services.quiz_service.url') . '/api/health');
+            $r = Http::timeout(5)->withHeaders($this->headers($request))
+                ->get(rtrim(config('services.quiz_service.url', env('QUIZ_SVC_URL', 'http://localhost:8003')), '/') . '/api/health');
 
             return response()->json([
                 'league_proxy' => 'ok',
-                'quiz_service' => $response->successful() ? 'ok' : 'error',
-                'quiz_service_data' => $response->json()
-            ]);
-        } catch (\Exception $e) {
+                'quiz_service' => $r->successful() ? 'ok' : 'error',
+                'quiz_service_data' => $this->json($r),
+            ], $r->status());
+        } catch (\Throwable $e) {
             return response()->json([
                 'league_proxy' => 'ok',
                 'quiz_service' => 'error',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

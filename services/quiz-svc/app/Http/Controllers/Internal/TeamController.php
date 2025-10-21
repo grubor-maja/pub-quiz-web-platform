@@ -31,7 +31,7 @@ class TeamController extends Controller
         $exists = Team::where('organization_id', $data['organization_id'])
                      ->where('name', $data['name'])
                      ->exists();
-        
+
         if ($exists) {
             throw ValidationException::withMessages([
                 'name' => ['Team name already exists in this organization']
@@ -51,7 +51,7 @@ class TeamController extends Controller
         $team = Team::with(['quizzes' => function($query) {
             $query->withPivot('registered_at', 'status', 'final_position');
         }])->findOrFail($id);
-        
+
         return response()->json($team);
     }
 
@@ -64,7 +64,7 @@ class TeamController extends Controller
                     ->with(['quizzes:id,title,date'])
                     ->orderBy('name')
                     ->get();
-        
+
         return response()->json($teams);
     }
 
@@ -92,7 +92,7 @@ class TeamController extends Controller
                          ->where('name', $data['name'])
                          ->where('id', '!=', $id)
                          ->exists();
-            
+
             if ($exists) {
                 throw ValidationException::withMessages([
                     'name' => ['Team name already exists in this organization']
@@ -111,13 +111,13 @@ class TeamController extends Controller
     public function destroy($id)
     {
         $team = Team::findOrFail($id);
-        
+
         // Check if team is registered for any active quizzes
         $activeRegistrations = $team->quizzes()
                                   ->wherePivot('status', 'registered')
                                   ->where('date', '>=', now()->toDateString())
                                   ->count();
-        
+
         if ($activeRegistrations > 0) {
             return response()->json([
                 'message' => 'Cannot delete team with active quiz registrations. Please cancel registrations first.'
@@ -147,7 +147,7 @@ class TeamController extends Controller
         // Check if team already has application/registration for this quiz
         $existingEntry = $team->quizzes()
                              ->wherePivot('quiz_id', $quiz->id)
-                             ->whereIn('team_quiz.status', ['pending', 'registered'])
+                             ->whereIn('quiz_teams.status', ['pending', 'registered'])
                              ->exists();
 
         if ($existingEntry) {
@@ -290,7 +290,7 @@ class TeamController extends Controller
     }
 
     /**
-     * Unregister team from quiz
+     * Unregister team from quiz (change status back to pending)
      */
     public function unregisterFromQuiz($teamId, Request $request)
     {
@@ -304,12 +304,12 @@ class TeamController extends Controller
         $team = Team::findOrFail($teamId);
         $quiz = Quiz::findOrFail($data['quiz_id']);
 
-        // Update status to cancelled instead of deleting
+        // Change status back to pending instead of cancelled
         $updated = $team->quizzes()
                        ->wherePivot('quiz_id', $quiz->id)
                        ->wherePivot('status', 'registered')
                        ->updateExistingPivot($quiz->id, [
-                           'status' => 'cancelled'
+                           'status' => 'pending'
                        ]);
 
         if (!$updated) {
@@ -319,7 +319,7 @@ class TeamController extends Controller
         }
 
         return response()->json([
-            'message' => 'Team successfully unregistered from quiz',
+            'message' => 'Team registration cancelled, moved back to pending',
             'remaining_capacity' => $quiz->fresh()->remaining_capacity
         ]);
     }
@@ -330,7 +330,7 @@ class TeamController extends Controller
     public function getQuizTeams($quizId)
     {
         $quiz = Quiz::findOrFail($quizId);
-        
+
         $teams = $quiz->teams()
                      ->withPivot('registered_at', 'status', 'final_position')
                      ->orderByPivot('registered_at')

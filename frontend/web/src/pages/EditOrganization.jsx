@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import LoadingDragon from '../components/LoadingDragon'
+import {RiDeleteBin6Line} from "react-icons/ri";
 
 function EditOrganization() {
   const [organization, setOrganization] = useState(null)
@@ -28,10 +30,10 @@ function EditOrganization() {
         setOrganization(data)
         setName(data.name)
       } else {
-        setError('Failed to fetch organization')
+        setError('Neuspešno učitavanje organizacije')
       }
     } catch (err) {
-      setError('Network error')
+      setError('Greška mreže')
     }
   }
 
@@ -95,13 +97,13 @@ function EditOrganization() {
       if (response.ok) {
         const data = await response.json()
         setOrganization(data)
-        alert('Organization updated successfully!')
+        alert('Organizacija uspešno izmenjena.')
       } else {
         const errorData = await response.json()
-        setError(errorData.message || 'Failed to update organization')
+        setError(errorData.message || 'Neuspešna izmena organizacije')
       }
     } catch (err) {
-      setError('Network error')
+      setError('Greška mreže')
     } finally {
       setSaving(false)
     }
@@ -129,20 +131,20 @@ function EditOrganization() {
       if (response.ok) {
         fetchMembers()
         setNewMember({ userId: '', role: 'MEMBER' })
-        alert('Member added successfully!')
+        alert('Član je uspešno dodat!')
       } else {
         const errorData = await response.json()
         console.error('Add member error:', errorData)
-        alert(`Failed to add member: ${errorData.message || errorData.error || 'Unknown error'}`)
+        alert(`Neuspešno dodavanje člana: ${errorData.message || errorData.error || 'Nepoznata greška'}`)
       }
     } catch (err) {
       console.error('Add member network error:', err)
-      alert('Network error: ' + err.message)
+      alert('Greška mreže: ' + err.message)
     }
   }
 
   const handleRemoveMember = async (userId) => {
-    if (!confirm('Are you sure you want to remove this member?')) return
+    if (!confirm('Da li ste sigurni da želite da uklonite ovog člana?')) return
 
     try {
       const token = localStorage.getItem('token')
@@ -156,15 +158,15 @@ function EditOrganization() {
 
       if (response.ok) {
         setMembers(members.filter(m => m.user_id !== userId))
-        alert('Member removed successfully!')
+        alert('Član je uspešno uklonjen!')
       } else {
         const errorData = await response.json()
         console.error('Remove member error:', errorData)
-        alert(`Failed to remove member: ${errorData.message || errorData.error || 'Unknown error'}`)
+        alert(`Neuspešno uklanjanje člana: ${errorData.message || errorData.error || 'Nepoznata greška'}`)
       }
     } catch (err) {
       console.error('Remove member network error:', err)
-      alert('Network error: ' + err.message)
+      alert('Greška mreže: ' + err.message)
     }
   }
 
@@ -192,10 +194,7 @@ function EditOrganization() {
     return (
       <div className="main-content">
         <div className="container-fluid">
-          <div className="loading">
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏢</div>
-            Loading organization...
-          </div>
+          <LoadingDragon />
         </div>
       </div>
     )
@@ -207,14 +206,14 @@ function EditOrganization() {
         <div className="container-fluid">
           <div className="empty-state">
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
-            <h3>Organization not found</h3>
-            <p>The organization you're looking for doesn't exist or you don't have permission to access it.</p>
-            <button 
+            <h3>Organizacija nije pronađena</h3>
+            <p>Organizacija koju tražite ne postoji ili nemate dozvolu za pristup.</p>
+            <button
               onClick={() => navigate('/manage/organizations')}
               className="btn btn-primary btn-lg"
               style={{ marginTop: '24px' }}
             >
-              Back to Organizations
+              Nazad na organizacije
             </button>
           </div>
         </div>
@@ -226,12 +225,12 @@ function EditOrganization() {
     <div className="main-content">
       <div className="container-fluid">
         <div className="page-header">
-          <h1 className="page-title">Edit Organization</h1>
+          <h1 className="page-title">Izmeni organizaciju</h1>
           <button 
             onClick={() => navigate('/manage/organizations')}
             className="btn btn-secondary"
           >
-            ← Back to Organizations
+            ← Nazad
           </button>
         </div>
 
@@ -243,19 +242,19 @@ function EditOrganization() {
 
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">Organization Details</h2>
+            <h2 className="card-title">Detalji organizacije</h2>
           </div>
 
           <form onSubmit={handleUpdateOrganization}>
             <div className="form-group">
-              <label className="form-label">Organization Name *</label>
+              <label className="form-label">Ime organizacije *</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="form-control"
-                placeholder="Enter organization name"
+                placeholder="Unesite naziv organizacije"
                 style={{ fontSize: '16px' }}
               />
             </div>
@@ -266,7 +265,7 @@ function EditOrganization() {
                 disabled={saving || !name.trim()}
                 className="btn btn-primary"
               >
-                {saving ? 'Updating...' : 'Update Organization'}
+                {saving ? 'Izmena u toku...' : 'Izmeni organizaciju'}
               </button>
             </div>
           </form>
@@ -274,7 +273,7 @@ function EditOrganization() {
 
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">Organization Members ({members.length})</h2>
+            <h2 className="card-title">Članovi organizacije ({members.length})</h2>
           </div>
 
           {availableUsers.length > 0 && (
@@ -290,16 +289,23 @@ function EditOrganization() {
                 border: '1px solid rgba(33, 74, 156, 0.1)'
               }}>
                 <div className="form-group" style={{ minWidth: '250px', marginBottom: 0 }}>
-                  <label className="form-label">Select User</label>
+                  <label className="form-label">Izaberi korisnika</label>
                   <select
                     value={newMember.userId}
                     onChange={(e) => setNewMember({...newMember, userId: e.target.value})}
                     className="form-control"
+                    style={{
+                      background: 'rgba(26, 31, 41, 0.9)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#e4e6ea'
+                    }}
                     required
                   >
-                    <option value="">Choose a user...</option>
+                    <option value="" style={{ background: '#2c2c2c', color: '#e4e6ea' }}>
+                      Izaberi korisnika...
+                    </option>
                     {availableUsers.map(user => (
-                      <option key={user.id} value={user.id}>
+                      <option key={user.id} value={user.id} style={{ background: '#2c2c2c', color: '#e4e6ea' }}>
                         {user.name} ({user.email})
                       </option>
                     ))}
@@ -307,14 +313,19 @@ function EditOrganization() {
                 </div>
 
                 <div className="form-group" style={{ minWidth: '120px', marginBottom: 0 }}>
-                  <label className="form-label">Role</label>
+                  <label className="form-label">Uloga</label>
                   <select
                     value={newMember.role}
                     onChange={(e) => setNewMember({...newMember, role: e.target.value})}
                     className="form-control"
+                    style={{
+                      background: 'rgba(26, 31, 41, 0.9)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#e4e6ea'
+                    }}
                   >
-                    <option value="MEMBER">Member</option>
-                    <option value="ADMIN">Admin</option>
+                    <option value="MEMBER" style={{ background: '#2c2c2c', color: '#e4e6ea' }}>Član</option>
+                    <option value="ADMIN" style={{ background: '#2c2c2c', color: '#e4e6ea' }}>Admin</option>
                   </select>
                 </div>
 
@@ -323,7 +334,7 @@ function EditOrganization() {
                   className="btn btn-primary"
                   disabled={!newMember.userId}
                 >
-                  Add Member
+                  Dodaj člana
                 </button>
               </div>
             </form>
@@ -332,17 +343,17 @@ function EditOrganization() {
           {members.length === 0 ? (
             <div className="empty-state" style={{ margin: '40px 0' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>👤</div>
-              <h3>No members yet</h3>
-              <p>Add members to your organization to start managing quizzes together.</p>
+              <h3>Nema članova</h3>
+              <p>Dodajte članove u vašu organizaciju da biste zajedno upravljali kvizovima.</p>
             </div>
           ) : (
             <table className="table">
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th>Ime</th>
                   <th>Email</th>
-                  <th>Role</th>
-                  <th>Actions</th>
+                  <th>Uloga</th>
+                  <th>Akcije</th>
                 </tr>
               </thead>
               <tbody>
@@ -361,7 +372,7 @@ function EditOrganization() {
                         color: member.role === 'ADMIN' ? '#dc3545' : '#214a9c',
                         border: `1px solid ${member.role === 'ADMIN' ? 'rgba(220, 53, 69, 0.3)' : 'rgba(33, 74, 156, 0.3)'}`
                       }}>
-                        {member.role}
+                        {member.role === 'ADMIN' ? 'ADMIN' : 'ČLAN'}
                       </span>
                     </td>
                     <td>
@@ -374,7 +385,7 @@ function EditOrganization() {
                         }}
                         onClick={() => handleRemoveMember(member.user_id)}
                       >
-                        🗑️ Remove
+                          <RiDeleteBin6Line/> Ukloni
                       </button>
                     </td>
                   </tr>

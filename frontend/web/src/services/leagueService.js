@@ -87,6 +87,11 @@ export const leagueService = {
     }
   },
 
+  // Alias for backward compatibility
+  async getLeagueById(leagueId) {
+    return this.getLeague(leagueId)
+  },
+
   // Create new league
   async createLeague(leagueData) {
     try {
@@ -127,12 +132,22 @@ export const leagueService = {
         headers: getAuthHeaders(),
       })
       
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      // Handle 204 No Content response (successful deletion)
+      if (response.status === 204) {
+        return true
       }
       
-      return response.status === 204
+      // For other successful responses, try to parse JSON
+      if (response.ok) {
+        try {
+          return await response.json()
+        } catch {
+          return true // If no JSON, just return success
+        }
+      }
+
+      // Handle errors using the standard error handler
+      return await handleApiResponse(response)
     } catch (error) {
       console.error('Error deleting league:', error)
       throw error

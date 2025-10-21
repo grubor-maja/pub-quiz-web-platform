@@ -63,9 +63,8 @@ class AuthController extends Controller
             $user = Auth::user();
             $token = $user->createToken('api-token')->plainTextToken;
 
-                        // Get organization_id and role from org-svc if exists
             $orgData = $this->getOrganizationData($user);
-            \Log::info('Organization data: ' . $orgData['organization_id']);
+            \Log::info('Organization data: ' . ($orgData['organization_id'] ?? 'null'));
             return response()->json([
                 'token' => $token,
                 'user' => [
@@ -73,8 +72,8 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role,
-                    // return org id if exists
                     'organization_id' => $orgData['organization_id'] ?? null,
+                    'organization_role' => $orgData['organization_role'] ?? null,
                 ]
             ]);
         } catch (\Exception $e) {
@@ -138,9 +137,8 @@ class AuthController extends Controller
                 'role' => $user->role,
                 'is_super_admin' => $user->isSuperAdmin(),
                 'is_user' => $user->isUser(),
-                'organization_id' => $orgData['organization_id'] ?? null
-                
-
+                'organization_id' => $orgData['organization_id'] ?? null,
+                'organization_role' => $orgData['organization_role'] ?? null,
             ]);
         } catch (\Exception $e) {
             \Log::error('Me endpoint error: ' . $e->getMessage());
@@ -196,7 +194,7 @@ class AuthController extends Controller
                     if ((int)$memberId === (int)$user->id) {
                         return [
                             'organization_id'   => $orgId,
-
+                            'organization_role' => $m['role'] ?? 'member',
                         ];
                     }
                 }

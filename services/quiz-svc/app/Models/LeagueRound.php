@@ -38,11 +38,4 @@ class LeagueRound extends Model
     {
         return $this->belongsTo(Team::class);
     }
-}space App\Models;
-
-use Illuminate\Database\Eloquent\Model;
-
-class LeagueRound extends Model
-{
-    //
 }

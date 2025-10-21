@@ -37,7 +37,7 @@ Route::middleware(['internal.only', 'auth.context'])->prefix('internal')->group(
     Route::post('/teams/{teamId}/register-quiz', [TeamController::class, 'registerForQuiz']);
     Route::post('/teams/{teamId}/unregister-quiz', [TeamController::class, 'unregisterFromQuiz']);
     Route::get('/quizzes/{quizId}/teams', [TeamController::class, 'getQuizTeams']);
-    
+
     // League routes
     Route::get('/leagues', [LeagueController::class, 'index']); // Public - all active leagues
     Route::get('/orgs/{orgId}/leagues', [LeagueController::class, 'listByOrg']); // Leagues by org

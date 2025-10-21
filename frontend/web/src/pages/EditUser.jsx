@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import LoadingDragon from '../components/LoadingDragon'
 
 function EditUser() {
   const [user, setUser] = useState(null)
@@ -62,13 +63,13 @@ function EditUser() {
       if (response.ok) {
         const data = await response.json()
         setUser(data)
-        alert('User updated successfully!')
+        alert('Korisnik je uspešno ažuriran!')
       } else {
         const errorData = await response.json()
-        setError(errorData.message || 'Failed to update user')
+        setError(errorData.message || 'Neuspešno ažuriranje korisnika')
       }
     } catch (err) {
-      setError('Network error')
+      setError('Greška u mreži')
     } finally {
       setSaving(false)
     }
@@ -96,10 +97,7 @@ function EditUser() {
     return (
       <div className="main-content">
         <div className="container-fluid">
-          <div className="loading">
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>👤</div>
-            Loading user...
-          </div>
+          <LoadingDragon />
         </div>
       </div>
     )
@@ -111,14 +109,14 @@ function EditUser() {
         <div className="container-fluid">
           <div className="empty-state">
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
-            <h3>User not found</h3>
-            <p>The user you're looking for doesn't exist or you don't have permission to access them.</p>
-            <button 
+            <h3>Korisnik nije pronađen</h3>
+            <p>Korisnik kojeg tražite ne postoji ili nemate dozvolu za pristup njemu.</p>
+            <button
               onClick={() => navigate('/manage/users')}
               className="btn btn-primary btn-lg"
               style={{ marginTop: '24px' }}
             >
-              Back to Users
+              Nazad na korisnike
             </button>
           </div>
         </div>
@@ -130,12 +128,12 @@ function EditUser() {
     <div className="main-content">
       <div className="container-fluid">
         <div className="page-header">
-          <h1 className="page-title">Edit User</h1>
-          <button 
+          <h1 className="page-title">Izmeni korisnika</h1>
+          <button
             onClick={() => navigate('/manage/users')}
             className="btn btn-secondary"
           >
-            ← Back to Users
+            ← Nazad
           </button>
         </div>
 
@@ -147,15 +145,15 @@ function EditUser() {
 
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
           <div className="card-header">
-            <h2 className="card-title">User Information</h2>
+            <h2 className="card-title">Podaci o korisniku</h2>
             <p style={{ color: 'rgba(228, 230, 234, 0.7)', fontSize: '14px', margin: '8px 0 0' }}>
-              Update user details and manage their system permissions.
+              Ažurirajte podatke korisnika i upravljajte njihovim pravima.
             </p>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Full Name *</label>
+              <label className="form-label">Ime i prezime *</label>
               <input
                 type="text"
                 name="name"
@@ -163,13 +161,13 @@ function EditUser() {
                 onChange={handleChange}
                 required
                 className="form-control"
-                placeholder="Enter full name"
+                placeholder="Unesite ime i prezime"
                 style={{ fontSize: '16px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Email Address *</label>
+              <label className="form-label">Email adresa *</label>
               <input
                 type="email"
                 name="email"
@@ -177,13 +175,13 @@ function EditUser() {
                 onChange={handleChange}
                 required
                 className="form-control"
-                placeholder="Enter email address"
+                placeholder="Unesite email adresu"
                 style={{ fontSize: '16px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">User Role</label>
+              <label className="form-label">Uloga korisnika</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px' }}>
                 <div style={{ 
                   padding: '12px 20px', 
@@ -197,13 +195,13 @@ function EditUser() {
                 }}>
                   {formData.role}
                 </div>
-                
-                <button 
+
+                <button
                   type="button"
                   onClick={toggleRole}
                   className="btn btn-secondary btn-sm"
                 >
-                  Toggle Role
+                  Promeni ulogu
                 </button>
               </div>
               
@@ -214,8 +212,8 @@ function EditUser() {
                 fontSize: '12px'
               }}>
                 {formData.role === 'USER' 
-                  ? 'Regular user with limited permissions'
-                  : 'Super Admin with full system access'
+                  ? 'Obični korisnik sa ograničenim pravima'
+                  : 'Super Admin sa punim pristupom sistemu'
                 }
               </small>
             </div>
@@ -226,7 +224,7 @@ function EditUser() {
                 onClick={() => navigate('/manage/users')}
                 className="btn btn-secondary"
               >
-                Cancel
+                Otkaži
               </button>
               
               <button 
@@ -234,30 +232,30 @@ function EditUser() {
                 disabled={saving}
                 className="btn btn-primary"
               >
-                {saving ? 'Updating...' : 'Update User'}
+                {saving ? 'Ažuriranje...' : 'Ažuriraj korisnika'}
               </button>
             </div>
           </form>
 
           <div className="card" style={{ marginTop: '32px', background: 'rgba(33, 74, 156, 0.05)', borderColor: 'rgba(33, 74, 156, 0.2)' }}>
-            <h3 className="card-subtitle" style={{ color: '#214a9c', marginTop: 0 }}>📊 User Stats</h3>
+            <h3 className="card-subtitle" style={{ color: '#214a9c', marginTop: 0 }}>📊 Statistika korisnika</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
               <div>
-                <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>Created</div>
+                <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>Kreiran</div>
                 <div style={{ fontWeight: '500' }}>{new Date(user.created_at).toLocaleDateString('sr-RS')}</div>
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>Admin Status</div>
-                <div style={{ 
+                <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>Admin status</div>
+                <div style={{
                   fontWeight: '600',
                   color: formData.role === 'SUPER_ADMIN' ? '#dc3545' : '#28a745'
                 }}>
-                  {formData.role === 'SUPER_ADMIN' ? '🛡️ Super Admin' : '👤 Regular User'}
+                  {formData.role === 'SUPER_ADMIN' ? '🛡️ Super Admin' : '👤 Obični korisnik'}
                 </div>
               </div>
               {user.organization_name && (
                 <div>
-                  <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>Organization</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.6)', textTransform: 'uppercase' }}>Organizacija</div>
                   <div style={{ fontWeight: '500', color: '#28a745' }}>🏢 {user.organization_name}</div>
                   {user.organization_role && (
                     <div style={{ 
@@ -265,7 +263,7 @@ function EditUser() {
                       color: user.organization_role === 'ADMIN' ? '#856404' : '#155724',
                       marginTop: '2px'
                     }}>
-                      {user.organization_role === 'ADMIN' ? '👑 Organization Admin' : '👤 Organization Member'}
+                      {user.organization_role === 'ADMIN' ? '👑 Administrator organizacije' : '👤 Član organizacije'}
                     </div>
                   )}
                 </div>

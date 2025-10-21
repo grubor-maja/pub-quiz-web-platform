@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 function Login() {
   const [formData, setFormData] = useState({
@@ -8,20 +8,9 @@ function Login() {
     password: ''
   })
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-
-  useEffect(() => {
-    // Check if there's a success message from registration
-    if (location.state?.message) {
-      setSuccess(location.state.message)
-      // Clear the state so it doesn't show again on refresh
-      window.history.replaceState({}, document.title)
-    }
-  }, [location])
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -36,10 +25,15 @@ function Login() {
     setError('')
 
     try {
-      await login(formData.email, formData.password)
-      navigate('/')  // Redirect to dashboard after successful login
+      const result = await login(formData.email, formData.password)
+      if (result.success) {
+          console.log(result);
+        navigate('/')
+      } else {
+        setError(result.error || 'Prijava neuspešna')
+      }
     } catch (err) {
-      setError(err.message || 'Login failed')
+      setError(err.message || 'Prijava neuspešna')
     } finally {
       setLoading(false)
     }
@@ -55,15 +49,41 @@ function Login() {
       }}>
         <div className="card" style={{ maxWidth: '450px', width: '100%' }}>
           <div className="card-header" style={{ textAlign: 'center' }}>
-            <h2 className="card-title" style={{ fontSize: '28px', marginBottom: '8px' }}>Welcome Back</h2>
-            <p style={{ color: 'rgba(228, 230, 234, 0.7)', fontSize: '14px', margin: 0 }}>
-              Sign in to your KoZnaZna account
-            </p>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '12px'
+            }}>
+              <img 
+                src="/logo1.png" 
+                alt="Dragon Logo" 
+                style={{ 
+                  width: '40px', 
+                  height: '40px' 
+                }} 
+              />
+              <h2 style={{
+                fontSize: '24px',
+                fontFamily: "'Unkempt', cursive",
+                fontWeight: 'bold',
+                margin: 0,
+                display: 'inline',
+                whiteSpace: 'nowrap'
+              }}>
+                Dobrodosli na{' '}
+                <span style={{ color: '#94994F' }}>Ko</span>
+                <span style={{ color: '#F2E394' }}>Zna</span>
+                <span style={{ color: '#F2B441' }}>Zna</span>
+                {' '}platformu
+              </h2>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Email Address</label>
+              <label className="form-label">Email adresa</label>
               <input
                 type="email"
                 name="email"
@@ -71,13 +91,13 @@ function Login() {
                 onChange={handleChange}
                 required
                 className="form-control"
-                placeholder="Enter your email"
+                placeholder="Email adresa"
                 style={{ fontSize: '16px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Password</label>
+              <label className="form-label">Lozinka</label>
               <input
                 type="password"
                 name="password"
@@ -85,20 +105,10 @@ function Login() {
                 onChange={handleChange}
                 required
                 className="form-control"
-                placeholder="Enter your password"
+                placeholder="Lozinka"
                 style={{ fontSize: '16px' }}
               />
             </div>
-
-            {success && (
-              <div className="card" style={{ 
-                background: 'rgba(40, 167, 69, 0.1)', 
-                borderColor: 'rgba(40, 167, 69, 0.3)',
-                marginBottom: '24px'
-              }}>
-                <p style={{ color: '#28a745', margin: 0, fontSize: '14px' }}>✅ {success}</p>
-              </div>
-            )}
 
             {error && (
               <div className="card" style={{ 
@@ -106,7 +116,7 @@ function Login() {
                 borderColor: 'rgba(220, 53, 69, 0.3)',
                 marginBottom: '24px'
               }}>
-                <p style={{ color: '#dc3545', margin: 0, fontSize: '14px' }}>❌ {error}</p>
+                <p style={{ color: '#dc3545', margin: 0, fontSize: '14px' }}> {error}</p>
               </div>
             )}
 
@@ -116,12 +126,12 @@ function Login() {
               className="btn btn-primary btn-lg"
               style={{ width: '100%', marginBottom: '24px' }}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Prijavljivanje...' : 'Prijavite se'}
             </button>
 
             <div style={{ textAlign: 'center' }}>
               <p style={{ color: 'rgba(228, 230, 234, 0.7)', fontSize: '14px' }}>
-                Don't have an account?{' '}
+                Nemate nalog?{' '}
                 <Link 
                   to="/register" 
                   style={{ 
@@ -132,7 +142,7 @@ function Login() {
                   onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
                   onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
                 >
-                  Create one here
+                  Registrujte se ovde
                 </Link>
               </p>
             </div>

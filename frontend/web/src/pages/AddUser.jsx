@@ -19,7 +19,7 @@ function AddUser() {
     setError('')
 
     if (formData.password !== formData.password_confirmation) {
-      setError('Passwords do not match')
+      setError('Lozinke se ne poklapaju')
       setLoading(false)
       return
     }
@@ -40,10 +40,10 @@ function AddUser() {
         navigate('/manage/users')
       } else {
         const errorData = await response.json()
-        setError(errorData.message || 'Failed to create user')
+        setError(errorData.message || 'Neuspešno kreiranje korisnika')
       }
     } catch (err) {
-      setError('Network error')
+      setError('Greška u mreži')
     } finally {
       setLoading(false)
     }
@@ -67,23 +67,23 @@ function AddUser() {
     <div className="main-content">
       <div className="container-fluid">
         <div className="page-header">
-          <h1 className="page-title">Add New User</h1>
-          <button 
+          <h1 className="page-title">Dodaj novog korisnika</h1>
+          <button
             onClick={() => navigate('/manage/users')}
             className="btn btn-secondary"
           >
-            ← Back to Users
+            ← Nazad
           </button>
         </div>
 
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
           <div className="card-header">
-            <h2 className="card-title">User Information</h2>
+            <h2 className="card-title">Podaci o korisniku</h2>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Full Name *</label>
+              <label className="form-label">Ime i prezime *</label>
               <input
                 type="text"
                 name="name"
@@ -91,12 +91,12 @@ function AddUser() {
                 onChange={handleChange}
                 required
                 className="form-control"
-                placeholder="Enter full name"
+                placeholder="Unesite ime i prezime"
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Email Address *</label>
+              <label className="form-label">Email adresa *</label>
               <input
                 type="email"
                 name="email"
@@ -104,12 +104,12 @@ function AddUser() {
                 onChange={handleChange}
                 required
                 className="form-control"
-                placeholder="Enter email address"
+                placeholder="Unesite email adresu"
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Password *</label>
+              <label className="form-label">Lozinka *</label>
               <input
                 type="password"
                 name="password"
@@ -118,12 +118,12 @@ function AddUser() {
                 required
                 minLength="8"
                 className="form-control"
-                placeholder="Enter password (min 8 characters)"
+                placeholder="Unesite lozinku (min 8 karaktera)"
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Confirm Password *</label>
+              <label className="form-label">Potvrdite lozinku *</label>
               <input
                 type="password"
                 name="password_confirmation"
@@ -132,12 +132,12 @@ function AddUser() {
                 required
                 minLength="8"
                 className="form-control"
-                placeholder="Confirm password"
+                placeholder="Potvrdite lozinku"
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">User Role</label>
+              <label className="form-label">Uloga korisnika</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px' }}>
                 <div style={{ 
                   padding: '12px 20px', 
@@ -157,7 +157,7 @@ function AddUser() {
                   onClick={toggleRole}
                   className="btn btn-secondary btn-sm"
                 >
-                  Toggle Role
+                  Promeni ulogu
                 </button>
               </div>
               
@@ -168,8 +168,8 @@ function AddUser() {
                 fontSize: '12px'
               }}>
                 {formData.role === 'USER' 
-                  ? 'Regular user with limited permissions'
-                  : 'Super Admin with full system access'
+                  ? 'Obični korisnik sa ograničenim pravima'
+                  : 'Super Admin sa punim pristupom sistemu'
                 }
               </small>
             </div>
@@ -190,7 +190,7 @@ function AddUser() {
                 onClick={() => navigate('/manage/users')}
                 className="btn btn-secondary"
               >
-                Cancel
+                Otkaži
               </button>
               
               <button 
@@ -198,7 +198,7 @@ function AddUser() {
                 disabled={loading}
                 className="btn btn-primary"
               >
-                {loading ? 'Creating...' : 'Create User'}
+                {loading ? 'Kreiranje...' : 'Kreiraj korisnika'}
               </button>
             </div>
           </form>

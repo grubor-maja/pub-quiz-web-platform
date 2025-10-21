@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-
+import { FaLightbulb } from 'react-icons/fa';
 function AddOrganization() {
   const [name, setName] = useState('')
   const [adminUserId, setAdminUserId] = useState('')
@@ -53,6 +53,10 @@ function AddOrganization() {
       })
 
       if (response.ok) {
+        // Show success alert with organization name
+        alert(`Uspešno je kreirana organizacija "${name}"!`)
+        
+        // Redirect to organizations page
         navigate('/manage/organizations')
       } else {
         const errorData = await response.json()
@@ -69,69 +73,59 @@ function AddOrganization() {
     <div className="main-content">
       <div className="container-fluid">
         <div className="page-header">
-          <h1 className="page-title">Add New Organization</h1>
-          <button 
+          <h1 className="page-title"><FaLightbulb/> Dodaj novu organizaciju</h1>
+          <button
             onClick={() => navigate('/manage/organizations')}
             className="btn btn-secondary"
           >
-            ← Back to Organizations
+            ← Nazad
           </button>
         </div>
 
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
           <div className="card-header">
-            <h2 className="card-title">Organization Information</h2>
-            <p style={{ color: 'rgba(228, 230, 234, 0.7)', fontSize: '14px', margin: '8px 0 0' }}>
-              Create a new organization to manage quizzes and members.
-            </p>
+            <h2 className="card-title">Informacije o organizaciji</h2>
+
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Organization Name *</label>
+              <label className="form-label">Naziv organizacije *</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="form-control"
-                placeholder="Enter organization name (e.g. Belgrade Quiz Club)"
+                placeholder="Unesite naziv organizacije (npr. Beogradski kviz klub)"
                 style={{ fontSize: '16px' }}
               />
-              <small style={{ 
-                color: 'rgba(228, 230, 234, 0.6)', 
-                fontSize: '12px', 
-                display: 'block', 
-                marginTop: '6px' 
-              }}>
-                Choose a memorable name that represents your quiz organization.
-              </small>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Organization Admin *</label>
+              <label className="form-label">Administrator organizacije *</label>
               <select
                 value={adminUserId}
                 onChange={(e) => setAdminUserId(e.target.value)}
                 required
                 className="form-control"
-                style={{ fontSize: '16px' }}
+                style={{
+                  fontSize: '16px',
+                  background: 'rgba(26, 31, 41, 0.9)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#e4e6ea'
+                }}
               >
-                <option value="">Select admin user...</option>
+                <option value="" style={{ background: '#2c2c2c', color: '#e4e6ea' }}>
+                  Izaberite admin korisnika...
+                </option>
                 {allUsers.map(user => (
-                  <option key={user.id} value={user.id}>
+                  <option key={user.id} value={user.id} style={{ background: '#2c2c2c', color: '#e4e6ea' }}>
                     {user.name} ({user.email})
                   </option>
                 ))}
               </select>
-              <small style={{ 
-                color: 'rgba(228, 230, 234, 0.6)', 
-                fontSize: '12px', 
-                display: 'block', 
-                marginTop: '6px' 
-              }}>
-                This user will be the administrator of this organization.
-              </small>
+
             </div>
 
             {error && (
@@ -140,7 +134,7 @@ function AddOrganization() {
                 borderColor: 'rgba(220, 53, 69, 0.3)',
                 marginBottom: '24px'
               }}>
-                <p style={{ color: '#dc3545', margin: 0 }}>❌ {error}</p>
+                <p style={{ color: '#dc3545', margin: 0 }}> {error}</p>
               </div>
             )}
 
@@ -150,7 +144,7 @@ function AddOrganization() {
                 onClick={() => navigate('/manage/organizations')}
                 className="btn btn-secondary"
               >
-                Cancel
+                Otkaži
               </button>
               
               <button 
@@ -158,18 +152,18 @@ function AddOrganization() {
                 disabled={loading || !name.trim() || !adminUserId}
                 className="btn btn-primary"
               >
-                {loading ? 'Creating...' : 'Create Organization'}
+                {loading ? 'Kreiranje...' : 'Kreiraj organizaciju'}
               </button>
             </div>
           </form>
 
           <div className="card" style={{ marginTop: '32px', background: 'rgba(33, 74, 156, 0.05)', borderColor: 'rgba(33, 74, 156, 0.2)' }}>
-            <h3 className="card-subtitle" style={{ color: '#214a9c', marginTop: 0 }}>💡 What's Next?</h3>
+            <h3 className="card-subtitle" style={{ color: '#214a9c', marginTop: 0 }}><FaLightbulb/> Šta sledi?</h3>
             <ul style={{ color: 'rgba(228, 230, 234, 0.8)', fontSize: '14px', paddingLeft: '20px' }}>
-              <li style={{ marginBottom: '8px' }}>After creating, you can add members to your organization</li>
-              <li style={{ marginBottom: '8px' }}>Members can be assigned ADMIN or MEMBER roles</li>
-              <li style={{ marginBottom: '8px' }}>Only organization members can create and manage quizzes</li>
-              <li>ADMINs can manage other members in the organization</li>
+              <li style={{ marginBottom: '8px' }}>Nakon kreiranja, možete dodati članove u Vašu organizaciju</li>
+              <li style={{ marginBottom: '8px' }}>Članovima se mogu dodeliti ADMIN ili MEMBER uloge</li>
+              <li style={{ marginBottom: '8px' }}>Samo članovi organizacije mogu kreirati i upravljati kvizovima</li>
+              <li>ADMINI mogu upravljati drugim članovima u organizaciji</li>
             </ul>
           </div>
         </div>

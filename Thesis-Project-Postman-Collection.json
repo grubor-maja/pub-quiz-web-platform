@@ -1,0 +1,1567 @@
+{
+	"info": {
+		"_postman_id": "thesis-project-2025",
+		"name": "Thesis Project - Pub Quiz Platform",
+		"description": "Complete API collection for microservices-based pub quiz platform.\n\n**Architecture:**\n- API Gateway (Laravel Sanctum auth)\n- Organization Service (teams/members)\n- Quiz Service (quizzes/leagues)\n- React Frontend\n\n**Authentication:**\n- Bearer token (Sanctum)\n- Internal service communication with X-Internal-Auth\n\n**Author:** Maja Grubor\n**Date:** October 2025",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test User\",\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\",\n    \"password_confirmation\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.globals.set('auth_token', response.token);",
+									"    pm.globals.set('user_id', response.user.id);",
+									"    pm.globals.set('user_role', response.user.role);",
+									"    pm.globals.set('organization_id', response.user.organization_id);",
+									"    ",
+									"    pm.test('Login successful', function () {",
+									"        pm.expect(response.token).to.not.be.null;",
+									"        pm.expect(response.user.email).to.eql(pm.globals.get('test_email'));",
+									"    });",
+									"} else {",
+									"    pm.test('Login failed', function () {",
+									"        pm.expect.fail('Login should be successful');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.globals.set('test_email', 'danilo@example.com');",
+									"pm.globals.set('test_password', 'password123');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('User profile retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    const user = pm.response.json();",
+									"    pm.expect(user.id).to.not.be.null;",
+									"    pm.expect(user.email).to.not.be.null;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👥 User Management (SUPER_ADMIN)",
+			"item": [
+				{
+					"name": "Get All Users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Users list retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    const users = pm.response.json();",
+									"    pm.expect(users).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/manage/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"manage",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const user = pm.response.json();",
+									"    pm.globals.set('created_user_id', user.id);",
+									"    ",
+									"    pm.test('User created successfully', function () {",
+									"        pm.expect(user.name).to.eql('Test Created User');",
+									"        pm.expect(user.email).to.eql('created@example.com');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Created User\",\n    \"email\": \"created@example.com\",\n    \"role\": \"USER\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/manage/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"manage",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/manage/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"manage",
+								"users",
+								"{{user_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated User Name\",\n    \"email\": \"updated@example.com\",\n    \"role\": \"ORG_ADMIN\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/manage/users/{{created_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"manage",
+								"users",
+								"{{created_user_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/manage/users/{{created_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"manage",
+								"users",
+								"{{created_user_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🏢 Organizations",
+			"item": [
+				{
+					"name": "Get All Organizations (Public)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Organizations list retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    const orgs = pm.response.json();",
+									"    pm.expect(orgs).to.be.an('array');",
+									"    if (orgs.length > 0) {",
+									"        pm.globals.set('test_org_id', orgs[0].id);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/organizations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"organizations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Organization by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/organizations/{{test_org_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"organizations",
+								"{{test_org_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Organization (SUPER_ADMIN)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const org = pm.response.json();",
+									"    pm.globals.set('created_org_id', org.id);",
+									"    ",
+									"    pm.test('Organization created successfully', function () {",
+									"        pm.expect(org.name).to.eql('Test Organization');",
+									"        pm.expect(org.description).to.include('Postman');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Organization\",\n    \"description\": \"Organization created via Postman test\",\n    \"admin_user_id\": {{user_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/manage/organizations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"manage",
+								"organizations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Organization",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Test Organization\",\n    \"description\": \"Updated description via Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/organizations/{{created_org_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"organizations",
+								"{{created_org_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Organization Members",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/organizations/{{organization_id}}/members",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"organizations",
+								"{{organization_id}}",
+								"members"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🎯 Quizzes",
+			"item": [
+				{
+					"name": "Get All Quizzes (Public)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Quizzes list retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    const quizzes = pm.response.json();",
+									"    pm.expect(quizzes).to.be.an('array');",
+									"    if (quizzes.length > 0) {",
+									"        pm.globals.set('test_quiz_id', quizzes[0].id);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/quizzes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"quizzes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Quiz by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/quizzes/{{test_quiz_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"quizzes",
+								"{{test_quiz_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Quiz (ORG_MEMBER+)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const quiz = pm.response.json();",
+									"    pm.globals.set('created_quiz_id', quiz.id);",
+									"    ",
+									"    pm.test('Quiz created successfully', function () {",
+									"        pm.expect(quiz.title).to.eql('Postman Test Quiz');",
+									"        pm.expect(quiz.venue).to.eql('Test Venue');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"organization_id\": {{organization_id}},\n    \"title\": \"Postman Test Quiz\",\n    \"description\": \"Quiz created via Postman testing\",\n    \"venue\": \"Test Venue\",\n    \"date\": \"2025-12-31\",\n    \"time\": \"20:00\",\n    \"min_team_size\": 2,\n    \"max_team_size\": 6,\n    \"capacity\": 20,\n    \"fee\": 500.00,\n    \"contact_phone\": \"+381641234567\",\n    \"image_url\": \"https://via.placeholder.com/400x200/1a1f29/214a9c?text=Test+Quiz\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/quizzes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"quizzes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Quiz",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Postman Quiz\",\n    \"description\": \"Updated description via Postman\",\n    \"venue\": \"Updated Venue\",\n    \"capacity\": 25\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/quizzes/{{created_quiz_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"quizzes",
+								"{{created_quiz_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Quizzes by Organization",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/organizations/{{organization_id}}/quizzes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"organizations",
+								"{{organization_id}}",
+								"quizzes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Quiz",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/quizzes/{{created_quiz_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"quizzes",
+								"{{created_quiz_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👥 Teams",
+			"item": [
+				{
+					"name": "Create Team",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const team = pm.response.json();",
+									"    pm.globals.set('created_team_id', team.id);",
+									"    ",
+									"    pm.test('Team created successfully', function () {",
+									"        pm.expect(team.name).to.eql('Postman Test Team');",
+									"        pm.expect(team.member_count).to.eql(4);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"organization_id\": {{organization_id}},\n    \"name\": \"Postman Test Team\",\n    \"member_count\": 4,\n    \"contact_phone\": \"+381641234567\",\n    \"contact_email\": \"team@example.com\",\n    \"notes\": \"Team created via Postman testing\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/teams",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"teams"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Team by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/teams/{{created_team_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"teams",
+								"{{created_team_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Teams by Organization",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/orgs/{{organization_id}}/teams",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orgs",
+								"{{organization_id}}",
+								"teams"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Team",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Postman Team\",\n    \"member_count\": 5,\n    \"notes\": \"Updated via Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/teams/{{created_team_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"teams",
+								"{{created_team_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Apply Team for Quiz",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"quiz_id\": {{test_quiz_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/teams/{{created_team_id}}/apply-quiz",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"teams",
+								"{{created_team_id}}",
+								"apply-quiz"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Quiz Teams",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/quizzes/{{test_quiz_id}}/teams",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"quizzes",
+								"{{test_quiz_id}}",
+								"teams"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Approve Team Application",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"quiz_id\": {{test_quiz_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/teams/{{created_team_id}}/approve-quiz",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"teams",
+								"{{created_team_id}}",
+								"approve-quiz"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Team",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/teams/{{created_team_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"teams",
+								"{{created_team_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🏆 Leagues",
+			"item": [
+				{
+					"name": "Get All Leagues (Public)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Leagues list retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    const leagues = pm.response.json();",
+									"    pm.expect(leagues).to.be.an('array');",
+									"    if (leagues.length > 0) {",
+									"        pm.globals.set('test_league_id', leagues[0].id);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/leagues",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leagues"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get League by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/leagues/{{test_league_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leagues",
+								"{{test_league_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create League",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const league = pm.response.json();",
+									"    pm.globals.set('created_league_id', league.id);",
+									"    ",
+									"    pm.test('League created successfully', function () {",
+									"        pm.expect(league.name).to.eql('Postman Test League');",
+									"        pm.expect(league.season).to.eql('2025');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"organization_id\": {{organization_id}},\n    \"name\": \"Postman Test League\",\n    \"description\": \"League created via Postman testing\",\n    \"season\": \"2025\",\n    \"start_date\": \"2025-01-15\",\n    \"end_date\": \"2025-06-15\",\n    \"max_teams\": 12,\n    \"entry_fee\": 1000.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/leagues",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leagues"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get League Table",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/leagues/{{test_league_id}}/table",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leagues",
+								"{{test_league_id}}",
+								"table"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Leagues by Organization",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/organizations/{{organization_id}}/leagues",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"organizations",
+								"{{organization_id}}",
+								"leagues"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update League",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Postman League\",\n    \"description\": \"Updated description via Postman\",\n    \"max_teams\": 16\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/leagues/{{created_league_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leagues",
+								"{{created_league_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Team to League",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"team_id\": {{created_team_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/leagues/{{created_league_id}}/teams",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leagues",
+								"{{created_league_id}}",
+								"teams"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Enter Round Results",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"round_number\": 1,\n    \"results\": [\n        {\n            \"team_id\": {{created_team_id}},\n            \"points\": 25,\n            \"position\": 1\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/leagues/{{created_league_id}}/rounds",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leagues",
+								"{{created_league_id}}",
+								"rounds"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete League",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/leagues/{{created_league_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leagues",
+								"{{created_league_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔧 Health & Debug",
+			"item": [
+				{
+					"name": "Organization Service Health",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/_debug/org-health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"_debug",
+								"org-health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Quiz Service Health",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/_debug/quiz-health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"_debug",
+								"quiz-health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Team Service Health",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/_debug/team-health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"_debug",
+								"team-health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "League Service Health",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/_debug/league-health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"_debug",
+								"league-health"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-refresh token if expired (optional)",
+					"// Add global setup scripts here"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test scripts",
+					"pm.test('Response time is reasonable', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(5000);",
+					"});",
+					"",
+					"pm.test('Response has JSON format', function () {",
+					"    if (pm.response.code !== 204) {",
+					"        pm.response.to.be.json;",
+					"    }",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_role",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "organization_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_email",
+			"value": "danilo@example.com",
+			"type": "string"
+		},
+		{
+			"key": "test_password",
+			"value": "password123",
+			"type": "string"
+		}
+	]
+}

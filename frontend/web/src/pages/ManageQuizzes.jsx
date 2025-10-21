@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { quizService, teamService } from '../services/teamService'
+import LoadingDragon from '../components/LoadingDragon'
+import { FaRegEdit } from 'react-icons/fa'
+import { RiDeleteBin6Line, RiTeamFill } from 'react-icons/ri'
+import {TbMoodEmpty} from "react-icons/tb";
 
 function ManageQuizzes() {
   const [quizzes, setQuizzes] = useState([])
@@ -9,36 +13,63 @@ function ManageQuizzes() {
   const [loadingApplications, setLoadingApplications] = useState({})
   const navigate = useNavigate()
 
-  const fetchQuizzes = async () => {
-    try {
-      const response = await fetch('http://localhost:8000/api/quizzes')
-      if (response.ok) {
-        const data = await response.json()
-        setQuizzes(data || [])
-        
-        // Fetch pending applications for each quiz
-        const applications = {}
-        for (const quiz of data || []) {
-          try {
-            const teamsResponse = await teamService.getQuizTeams(quiz.id)
-            const pendingTeams = teamsResponse.teams?.filter(team => team.pivot.status === 'pending') || []
-            if (pendingTeams.length > 0) {
-              applications[quiz.id] = pendingTeams
-            }
-          } catch (err) {
-            console.error(`Error fetching teams for quiz ${quiz.id}:`, err)
-          }
-        }
-        setPendingApplications(applications)
-      }
-    } catch (err) {
-      console.error('Error fetching quizzes:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+    const fetchQuizzes = async () => {
+        try {
+            // Get user and organization_id (adjust if you use a different storage or context)
+            const user = JSON.parse(localStorage.getItem('user'))
+            const orgId = user?.organization_id
 
-  const handleDelete = async (quizId) => {
+            console.log('Current user:', user);
+            console.log('Organization ID:', orgId);
+
+            if (!orgId) {
+                console.warn('No organization_id found for user. User must be assigned to an organization.');
+                alert('Morate biti dodeljeni organizaciji da biste upravljali kvizovima. Kontaktirajte administratora.');
+                setQuizzes([])
+                setPendingApplications({})
+                setLoading(false)
+                return
+            }
+
+            console.log(`Fetching quizzes for organization ${orgId}...`);
+            const response = await fetch(`http://localhost:8000/api/orgs/${orgId}/quizzes`)
+
+            console.log('Response status:', response.status);
+
+            if (response.ok) {
+                const data = await response.json()
+                console.log('Fetched quizzes:', data)
+                setQuizzes(data || [])
+
+                // Fetch pending applications for each quiz
+                const applications = {}
+                for (const quiz of data || []) {
+                    try {
+                        const teamsResponse = await teamService.getQuizTeams(quiz.id)
+                        const pendingTeams = teamsResponse.teams?.filter(team => team.pivot.status === 'pending') || []
+                        if (pendingTeams.length > 0) {
+                            applications[quiz.id] = pendingTeams
+                        }
+                    } catch (err) {
+                        console.error(`Error fetching teams for quiz ${quiz.id}:`, err)
+                    }
+                }
+                setPendingApplications(applications)
+            } else {
+                const errorData = await response.json()
+                console.error('Failed to fetch quizzes:', errorData)
+                alert(`Greška pri učitavanju kvizova: ${errorData.message || 'Nepoznata greška'}`)
+            }
+        } catch (err) {
+            console.error('Error fetching quizzes:', err)
+            alert('Greška pri povezivanju sa serverom: ' + err.message)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+
+    const handleDelete = async (quizId) => {
     if (!confirm('Are you sure you want to delete this quiz? This will also delete all team registrations.')) {
       return
     }
@@ -55,7 +86,7 @@ function ManageQuizzes() {
 
       if (response.ok) {
         setQuizzes(quizzes.filter(quiz => quiz.id !== quizId))
-        alert('Quiz deleted successfully!')
+        alert('Kviz uspešno obrisan!')
       } else {
         const errorData = await response.json()
         console.error('Delete quiz error:', errorData)
@@ -112,7 +143,7 @@ function ManageQuizzes() {
   }
 
   const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('sr-RS', {
+    return new Date(dateStr).toLocaleDateString('sr-Latn-RS', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -127,10 +158,7 @@ function ManageQuizzes() {
     return (
       <div className="main-content">
         <div className="container-fluid">
-          <div className="loading">
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎯</div>
-            Loading quizzes...
-          </div>
+          <LoadingDragon />
         </div>
       </div>
     )
@@ -140,10 +168,13 @@ function ManageQuizzes() {
     <div className="main-content">
       <div className="container-fluid">
         <div className="page-header">
-          <h1 className="page-title">Manage Quizzes</h1>
-          <button className="btn btn-primary">
-            + Add New Quiz
-          </button>
+          <h1 className="page-title">Upravljanje kvizovima</h1>
+          <Link 
+            to="/manage/quizzes/add"
+            className="btn btn-primary"
+          >
+            + Kreiraj kviz
+          </Link>
         </div>
 
         {/* Pending Applications Section */}
@@ -223,14 +254,14 @@ function ManageQuizzes() {
 
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">All Quizzes ({quizzes.length})</h2>
+            <h2 className="card-title">Svi kvizovi ({quizzes.length})</h2>
           </div>
           
           {quizzes.length === 0 ? (
             <div className="empty-state" style={{ margin: '40px 0' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎯</div>
-              <h3>No quizzes found</h3>
-              <p>Start by creating your first quiz event.</p>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}><TbMoodEmpty/></div>
+              <h3>Nema kvizova</h3>
+              <p>Počni sa kreiranjem novog kviza.</p>
             </div>
           ) : (
             <div className="quiz-grid">
@@ -261,7 +292,7 @@ function ManageQuizzes() {
                         color: isUpcoming(quiz.date) ? '#28a745' : '#dc3545',
                         fontWeight: '500'
                       }}>
-                        {isUpcoming(quiz.date) ? '🟢 Upcoming' : '🔴 Past'}
+                        {isUpcoming(quiz.date) ? '🟢 Predstojeći' : '🔴 Prošao'}
                       </div>
                     </div>
 
@@ -276,9 +307,9 @@ function ManageQuizzes() {
                           fontSize: '13px',
                           color: 'rgba(228, 230, 234, 0.8)'
                         }}>
-                          <span>Teams: {quiz.registered_teams_count || 0}/{quiz.capacity}</span>
+                          <span>Timovi: {quiz.registered_teams_count || 0}/{quiz.capacity}</span>
                           <span style={{ color: getCapacityColor(quiz.registered_teams_count || 0, quiz.capacity) }}>
-                            {quiz.remaining_capacity || (quiz.capacity - (quiz.registered_teams_count || 0))} left
+                            {quiz.remaining_capacity || (quiz.capacity - (quiz.registered_teams_count || 0))} preostalo
                           </span>
                         </div>
                         <div style={{
@@ -298,32 +329,20 @@ function ManageQuizzes() {
                       </div>
                     )}
 
-                    {!quiz.capacity && (
-                      <div style={{
-                        marginTop: '12px',
-                        padding: '6px 8px',
-                        background: 'rgba(248, 249, 250, 0.05)',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        color: 'rgba(228, 230, 234, 0.6)',
-                        textAlign: 'center'
-                      }}>
-                        No capacity limit set
-                      </div>
-                    )}
+
                     
                     <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                       <button 
                         onClick={() => navigate(`/quiz/${quiz.id}`)}
                         className="btn btn-sm btn-primary"
                       >
-                        👥 Manage Teams
+                        <RiTeamFill style={{ marginRight: '4px' }} /> Upravljanje timovima
                       </button>
                       <button 
                         onClick={() => navigate(`/quiz/${quiz.id}/edit`)}
                         className="btn btn-sm btn-secondary"
                       >
-                        ✏️ Edit
+                        <FaRegEdit style={{ marginRight: '4px' }} /> Izmeni
                       </button>
                       <button 
                         onClick={() => handleDelete(quiz.id)}
@@ -334,7 +353,7 @@ function ManageQuizzes() {
                           border: '1px solid rgba(220, 53, 69, 0.3)'
                         }}
                       >
-                        🗑️ Delete
+                        <RiDeleteBin6Line style={{ marginRight: '4px' }} /> Obriši
                       </button>
                     </div>
                   </div>

@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { leagueService } from '../services/leagueService'
-
+import LoadingDragon from '../components/LoadingDragon'
+import {HiOutlineTrophy} from "react-icons/hi2";
+import {PiTrophy} from "react-icons/pi";
+import {PiListNumbers} from "react-icons/pi";
 function Leagues() {
   const [leagues, setLeagues] = useState([])
   const [loading, setLoading] = useState(true)
@@ -10,14 +13,18 @@ function Leagues() {
   const [selectedYear, setSelectedYear] = useState('all')
   const [expandedLeagues, setExpandedLeagues] = useState(new Set())
   const [leagueTables, setLeagueTables] = useState({})
+  const [loadingTables, setLoadingTables] = useState({})
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
   const fetchLeagues = async () => {
     try {
       const data = await leagueService.getAllLeagues()
+      console.log('Fetched leagues:', data)
       setLeagues(data || [])
     } catch (err) {
       console.error('Error fetching leagues:', err)
+      setError('Greška pri učitavanju liga: ' + err.message)
     } finally {
       setLoading(false)
     }
@@ -75,13 +82,19 @@ function Leagues() {
     } else {
       newExpanded.add(leagueId)
       
-      // Fetch league table if not already loaded
+      // Load real league data from backend
       if (!leagueTables[leagueId]) {
+        setLoadingTables(prev => ({ ...prev, [leagueId]: true }))
         try {
-          const tableData = await leagueService.getLeagueTable(leagueId)
-          setLeagueTables(prev => ({ ...prev, [leagueId]: tableData }))
+          const leagueData = await leagueService.getLeague(leagueId)
+          console.log('Fetched league table data:', leagueData)
+          setLeagueTables(prev => ({ ...prev, [leagueId]: leagueData }))
+          setError('')
         } catch (err) {
           console.error('Error fetching league table:', err)
+          setError('Greška pri učitavanju tabele: ' + err.message)
+        } finally {
+          setLoadingTables(prev => ({ ...prev, [leagueId]: false }))
         }
       }
     }
@@ -99,21 +112,41 @@ function Leagues() {
     return icons[season] || '🏆'
   }
 
-  const getRankIcon = (position) => {
-    if (position === 1) return '🥇'
-    if (position === 2) return '🥈'
-    if (position === 3) return '🥉'
-    return `${position}.`
+  const getRoundResult = (team, leagueData, roundNumber) => {
+    if (!leagueData.rounds || !Array.isArray(leagueData.rounds)) return null
+
+    // Find the round result for this specific team and round
+    const result = leagueData.rounds.find(round =>
+      round.team_id === team.id && round.round_number === roundNumber
+    )
+
+    return result
+  }
+
+  const getPositionStyle = (position) => {
+    if (position === 1) {
+      return {
+        backgroundColor: '#ff6b35',
+        color: '#000'
+      }
+    } else if (position % 2 === 0) {
+      return {
+        backgroundColor: '#ff6b35',
+        color: '#000'
+      }
+    } else {
+      return {
+        backgroundColor: '#2c2c2c',
+        color: '#e4e6ea'
+      }
+    }
   }
 
   if (loading) {
     return (
       <div className="main-content">
         <div className="container-fluid">
-          <div className="loading">
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏆</div>
-            Učitavanje liga...
-          </div>
+          <LoadingDragon />
         </div>
       </div>
     )
@@ -122,10 +155,30 @@ function Leagues() {
   return (
     <div className="main-content">
       <div className="container-fluid">
+        {/* Alert Messages */}
+        {error && (
+          <div className="alert alert-danger" style={{ marginBottom: '20px' }}>
+            {error}
+            <button
+              onClick={() => setError('')}
+              style={{
+                float: 'right',
+                background: 'none',
+                border: 'none',
+                color: 'inherit',
+                fontSize: '20px',
+                cursor: 'pointer'
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <div className="page-header">
           <h1 className="page-title">Liga tabele</h1>
           <p style={{ color: 'rgba(228, 230, 234, 0.7)', margin: '8px 0 0 0' }}>
-            Pregledajte seževe i standings za sve lige kvizova
+            Pregledajte trenutne rezultate omiljenih liga
           </p>
         </div>
 
@@ -139,6 +192,11 @@ function Leagues() {
                   value={selectedOrganization}
                   onChange={e => setSelectedOrganization(e.target.value)}
                   className="form-control"
+                  style={{
+                    background: 'rgba(26, 31, 41, 0.9)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#e4e6ea'
+                  }}
                 >
                   <option value="all">Sve organizacije</option>
                   {getUniqueOrganizations().map(org => (
@@ -153,6 +211,11 @@ function Leagues() {
                   value={selectedSeason}
                   onChange={e => setSelectedSeason(e.target.value)}
                   className="form-control"
+                  style={{
+                    background: 'rgba(26, 31, 41, 0.9)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#e4e6ea'
+                  }}
                 >
                   <option value="all">Sve sezone</option>
                   {getUniqueValues('season').map(season => (
@@ -167,6 +230,11 @@ function Leagues() {
                   value={selectedYear}
                   onChange={e => setSelectedYear(e.target.value)}
                   className="form-control"
+                  style={{
+                    background: 'rgba(26, 31, 41, 0.9)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#e4e6ea'
+                  }}
                 >
                   <option value="all">Sve godine</option>
                   {getUniqueValues('year').map(year => (
@@ -181,7 +249,7 @@ function Leagues() {
         {Object.keys(groupedLeagues).length === 0 ? (
           <div className="card">
             <div className="empty-state" style={{ margin: '40px 0' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏆</div>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}><PiTrophy/></div>
               <h3>Nema liga za prikaz</h3>
               <p>Pokušajte sa drugačijim filterima ili se javite organizatorima kvizova.</p>
             </div>
@@ -193,7 +261,7 @@ function Leagues() {
                 <div className="card-header">
                   <h2 className="card-title">🏢 {orgData.organization}</h2>
                   <span style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
-                    {orgData.leagues.length} {orgData.leagues.length === 1 ? 'liga' : 'liga'}
+                    {orgData.leagues.length === 1 ? 'Broj liga:' : 'Bro liga:'} {orgData.leagues.length}
                   </span>
                 </div>
 
@@ -219,19 +287,19 @@ function Leagues() {
                       >
                         <div>
                           <h3 style={{ margin: '0 0 8px 0', color: '#e4e6ea', fontSize: '18px' }}>
-                            🏆 {league.name}
+                            <HiOutlineTrophy/> {league.name}
                           </h3>
                           <div style={{ display: 'flex', gap: '16px', fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
                             <span>{getSeasonIcon(league.season)} {league.season} {league.year}</span>
-                            <span>🎯 {league.total_rounds} kola</span>
+                            <span><PiListNumbers/> {league.total_rounds} kola</span>
                             <span>👥 {league.teams?.length || 0} timova</span>
                             {league.completed_rounds_count !== undefined && (
-                              <span>✅ {league.completed_rounds_count} odigrano</span>
+                              <span> {league.completed_rounds_count} odigrano</span>
                             )}
                           </div>
                         </div>
                         
-                        <div style={{ fontSize: '20px', color: 'rgba(228, 230, 234, 0.5)' }}>
+                        <div style={{ fontSize: '24px', color: '#ff6b35', fontWeight: 'bold' }}>
                           {expandedLeagues.has(league.id) ? '−' : '+'}
                         </div>
                       </div>
@@ -239,80 +307,211 @@ function Leagues() {
                       {/* League Table */}
                       {expandedLeagues.has(league.id) && (
                         <div style={{ padding: '20px' }}>
-                          {leagueTables[league.id] ? (
-                            <div>
-                              <h4 style={{ margin: '0 0 16px 0', color: '#e4e6ea' }}>
-                                📊 Tabela liga
-                              </h4>
-                              
-                              {leagueTables[league.id].table && leagueTables[league.id].table.length > 0 ? (
-                                <div className="table-responsive">
-                                  <table style={{
-                                    width: '100%',
-                                    borderCollapse: 'collapse',
-                                    background: 'rgba(228, 230, 234, 0.05)',
-                                    borderRadius: '8px',
-                                    overflow: 'hidden'
-                                  }}>
-                                    <thead>
-                                      <tr style={{ background: 'rgba(228, 230, 234, 0.1)' }}>
-                                        <th style={{ padding: '12px', textAlign: 'left', color: '#e4e6ea', border: 'none' }}>Pozicija</th>
-                                        <th style={{ padding: '12px', textAlign: 'left', color: '#e4e6ea', border: 'none' }}>Tim</th>
-                                        <th style={{ padding: '12px', textAlign: 'center', color: '#e4e6ea', border: 'none' }}>Kola</th>
-                                        <th style={{ padding: '12px', textAlign: 'center', color: '#e4e6ea', border: 'none' }}>Poeni</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {leagueTables[league.id].table.map((team, index) => (
-                                        <tr key={team.id} style={{
-                                          borderBottom: index < leagueTables[league.id].table.length - 1 ? '1px solid rgba(228, 230, 234, 0.1)' : 'none'
-                                        }}>
-                                          <td style={{ padding: '12px', color: '#e4e6ea', border: 'none' }}>
-                                            {getRankIcon(index + 1)}
-                                          </td>
-                                          <td style={{ padding: '12px', color: '#e4e6ea', fontWeight: '500', border: 'none' }}>
-                                            {team.name}
-                                          </td>
-                                          <td style={{ padding: '12px', textAlign: 'center', color: 'rgba(228, 230, 234, 0.7)', border: 'none' }}>
-                                            {team.pivot.matches_played}
-                                          </td>
-                                          <td style={{ 
-                                            padding: '12px', 
-                                            textAlign: 'center', 
-                                            color: '#28a745', 
-                                            fontWeight: '600',
-                                            fontSize: '16px',
-                                            border: 'none'
-                                          }}>
-                                            {team.pivot.total_points}
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              ) : (
-                                <p style={{ color: 'rgba(228, 230, 234, 0.6)', textAlign: 'center', padding: '20px' }}>
-                                  Nema rezultata za prikaz
-                                </p>
-                              )}
-
+                          {loadingTables[league.id] ? (
+                            <div style={{ textAlign: 'center', padding: '40px' }}>
+                              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔄</div>
+                              <p style={{ color: 'rgba(228, 230, 234, 0.7)' }}>Učitavanje tabele...</p>
+                            </div>
+                          ) : leagueTables[league.id] ? (
+                            <div style={{
+                              background: 'rgba(228, 230, 234, 0.05)',
+                              border: '1px solid rgba(228, 230, 234, 0.2)',
+                              borderRadius: '12px',
+                              overflow: 'hidden'
+                            }}>
+                              {/* Table Header */}
                               <div style={{
-                                marginTop: '16px',
-                                padding: '12px',
-                                background: 'rgba(228, 230, 234, 0.05)',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                color: 'rgba(228, 230, 234, 0.7)',
-                                textAlign: 'center'
+                                background: 'linear-gradient(135deg, #ff6b35 0%, #f7931e 100%)',
+                                padding: '16px 20px',
+                                color: '#000',
+                                fontWeight: 'bold'
                               }}>
-                                Odigrano {leagueTables[league.id].completed_rounds} od {leagueTables[league.id].total_rounds} kola
+                                <h2 style={{ margin: 0, fontSize: '20px' }}>📊 Tabela lige - {leagueTables[league.id].name}</h2>
                               </div>
+
+                              {leagueTables[league.id].teams && leagueTables[league.id].teams.length > 0 ? (
+                                <>
+                                  <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                      <thead>
+                                        <tr style={{ background: 'rgba(255, 107, 53, 0.2)' }}>
+                                          <th style={{
+                                            padding: '12px 16px',
+                                            textAlign: 'center',
+                                            color: '#ff6b35',
+                                            fontWeight: 'bold',
+                                            borderRight: '1px solid rgba(228, 230, 234, 0.2)',
+                                            minWidth: '60px',
+                                            fontSize: '16px'
+                                          }}>
+                                            #
+                                          </th>
+                                          <th style={{
+                                            padding: '12px 16px',
+                                            textAlign: 'left',
+                                            color: '#ff6b35',
+                                            fontWeight: 'bold',
+                                            borderRight: '1px solid rgba(228, 230, 234, 0.2)',
+                                            minWidth: '200px',
+                                            fontSize: '16px'
+                                          }}>
+                                            Naziv ekipe
+                                          </th>
+                                          <th style={{
+                                            padding: '12px 16px',
+                                            textAlign: 'center',
+                                            color: '#ff6b35',
+                                            fontWeight: 'bold',
+                                            borderRight: '1px solid rgba(228, 230, 234, 0.2)',
+                                            minWidth: '80px',
+                                            fontSize: '16px'
+                                          }}>
+                                            Σ Ukupno
+                                          </th>
+                                          {Array.from({ length: leagueTables[league.id].total_rounds }, (_, i) => (
+                                            <th key={i + 1} style={{
+                                              padding: '12px 16px',
+                                              textAlign: 'center',
+                                              color: '#ff6b35',
+                                              fontWeight: 'bold',
+                                              borderRight: '1px solid rgba(228, 230, 234, 0.2)',
+                                              minWidth: '70px',
+                                              fontSize: '14px'
+                                            }}>
+                                              Kolo {i + 1}
+                                            </th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {leagueTables[league.id].teams
+                                          .slice()
+                                          .sort((a, b) => {
+                                            const aPoints = (a.pivot?.total_points ?? a.total_points) || 0
+                                            const bPoints = (b.pivot?.total_points ?? b.total_points) || 0
+                                            return bPoints - aPoints
+                                          })
+                                          .map((team, index) => {
+                                            const position = index + 1
+                                            const style = getPositionStyle(position)
+                                            const totalPoints = (team.pivot?.total_points ?? team.total_points) || 0
+
+                                            return (
+                                              <tr key={team.id} style={style}>
+                                                <td style={{
+                                                  padding: '12px 16px',
+                                                  textAlign: 'center',
+                                                  fontWeight: 'bold',
+                                                  borderRight: '2px solid rgba(0, 0, 0, 0.2)',
+                                                  fontSize: '18px'
+                                                }}>
+                                                  {position}
+                                                </td>
+                                                <td style={{
+                                                  padding: '12px 16px',
+                                                  fontWeight: position <= 3 ? 'bold' : 'normal',
+                                                  borderRight: '2px solid rgba(0, 0, 0, 0.2)',
+                                                  fontSize: '15px'
+                                                }}>
+                                                  {position === 1 && '🥇 '}
+                                                  {position === 2 && '🥈 '}
+                                                  {position === 3 && '🥉 '}
+                                                  {team.name}
+                                                </td>
+                                                <td style={{
+                                                  padding: '12px 16px',
+                                                  textAlign: 'center',
+                                                  fontWeight: 'bold',
+                                                  borderRight: '2px solid rgba(0, 0, 0, 0.2)',
+                                                  fontSize: '18px'
+                                                }}>
+                                                  {totalPoints}
+                                                </td>
+                                                {Array.from({ length: leagueTables[league.id].total_rounds }, (_, i) => {
+                                                  const roundNumber = i + 1
+                                                  const roundResult = getRoundResult(team, leagueTables[league.id], roundNumber)
+
+                                                  return (
+                                                    <td key={roundNumber} style={{
+                                                      padding: '12px 16px',
+                                                      textAlign: 'center',
+                                                      borderRight: '1px solid rgba(0, 0, 0, 0.15)',
+                                                      fontSize: '15px',
+                                                      fontWeight: roundResult ? '500' : 'normal'
+                                                    }}>
+                                                      {roundResult ? roundResult.points : '-'}
+                                                    </td>
+                                                  )
+                                                })}
+                                              </tr>
+                                            )
+                                          })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+
+                                  {/* Table Footer Info */}
+                                  <div style={{
+                                    padding: '16px 20px',
+                                    background: 'rgba(228, 230, 234, 0.05)',
+                                    borderTop: '1px solid rgba(228, 230, 234, 0.2)',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    flexWrap: 'wrap',
+                                    gap: '16px',
+                                    fontSize: '14px'
+                                  }}>
+                                    <div style={{ color: 'rgba(228, 230, 234, 0.8)' }}>
+                                      👥 <strong>{leagueTables[league.id].teams.length}</strong> timova •
+                                      🎯 <strong>{leagueTables[league.id].completed_rounds_count || 0}</strong>/{leagueTables[league.id].total_rounds} odigranih kola •
+                                      <span style={{
+                                        color: leagueTables[league.id].is_active ? '#28a745' : '#dc3545',
+                                        marginLeft: '8px',
+                                        fontWeight: 'bold'
+                                      }}>
+                                        {leagueTables[league.id].is_active ? '🟢 Aktivna liga' : '🔴 Završena liga'}
+                                      </span>
+                                    </div>
+
+                                    <div style={{ color: 'rgba(228, 230, 234, 0.7)' }}>
+                                      <span style={{
+                                        display: 'inline-block',
+                                        width: '16px',
+                                        height: '16px',
+                                        background: '#ff6b35',
+                                        marginRight: '6px',
+                                        verticalAlign: 'middle',
+                                        borderRadius: '2px'
+                                      }}></span>
+                                      1. mesto i parni redovi •
+                                      <span style={{
+                                        display: 'inline-block',
+                                        width: '16px',
+                                        height: '16px',
+                                        background: '#2c2c2c',
+                                        margin: '0 6px 0 10px',
+                                        verticalAlign: 'middle',
+                                        borderRadius: '2px',
+                                        border: '1px solid rgba(228, 230, 234, 0.3)'
+                                      }}></span>
+                                      Neparni redovi
+                                    </div>
+                                  </div>
+                                </>
+                              ) : (
+                                <div style={{ padding: '40px', textAlign: 'center' }}>
+                                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>📭</div>
+                                  <h3 style={{ color: '#e4e6ea', marginBottom: '8px' }}>Nema timova u ligi</h3>
+                                  <p style={{ color: 'rgba(228, 230, 234, 0.6)' }}>
+                                    Liga je u pripremi. Timovi će uskoro biti dodati.
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           ) : (
-                            <div style={{ textAlign: 'center', padding: '20px' }}>
-                              <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔄</div>
-                              Učitavanje tabele...
+                            <div style={{ textAlign: 'center', padding: '40px' }}>
+                              <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+                              <p style={{ color: 'rgba(228, 230, 234, 0.6)' }}>Greška pri učitavanju tabele</p>
                             </div>
                           )}
                         </div>

@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import LoadingDragon from '../components/LoadingDragon'
 import { quizService, teamService } from '../services/teamService'
+import { RiTeamFill } from 'react-icons/ri'
+import {HiDocument, HiInformationCircle} from 'react-icons/hi'
+import {BiBuilding, BiCurrentLocation, BiGroup, BiMoney} from "react-icons/bi";
+import {PiCalendar, PiMapPinThin} from "react-icons/pi";
+import {IoBuild} from "react-icons/io5";
+import {FaBuilding} from "react-icons/fa";
 
 function QuizDetails() {
   const [quiz, setQuiz] = useState(null)
@@ -52,7 +58,7 @@ function QuizDetails() {
   }, [id])
 
   const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('sr-RS', { 
+    return new Date(dateStr).toLocaleDateString('sr-Latn-RS', {
       weekday: 'long',
       day: 'numeric', 
       month: 'long', 
@@ -83,7 +89,7 @@ function QuizDetails() {
       <div className="main-content">
         <div className="container-fluid">
           <div className="empty-state">
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>x</div>
             <h3>Quiz not found</h3>
             <p>The quiz you're looking for doesn't exist or has been removed.</p>
             <button 
@@ -91,7 +97,7 @@ function QuizDetails() {
               className="btn btn-primary btn-lg"
               style={{ marginTop: '24px' }}
             >
-              Back to Quizzes
+              Nazad
             </button>
           </div>
         </div>
@@ -108,7 +114,7 @@ function QuizDetails() {
             onClick={() => navigate('/')}
             className="btn btn-secondary"
           >
-            ← Back to Quizzes
+            ← Nazad na kvizove
           </button>
         </div>
 
@@ -124,16 +130,7 @@ function QuizDetails() {
             {quiz.title}
           </h1>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-            <span style={{ 
-              fontSize: '16px', 
-              color: isUpcoming() ? '#28a745' : '#dc3545',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              {isUpcoming() ? '🟢 Upcoming Event' : '🔴 Past Event'}
-            </span>
+
             {organization && (
               <span style={{ 
                 fontSize: '16px', 
@@ -142,7 +139,7 @@ function QuizDetails() {
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                🏢 {organization.name}
+                <BiBuilding/> {organization.name}
               </span>
             )}
             {quiz.capacity && (
@@ -153,7 +150,7 @@ function QuizDetails() {
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                👥 {quiz.registered_teams_count || 0}/{quiz.capacity} teams
+                👥 {quiz.registered_teams_count || 0}/{quiz.capacity} timova
               </span>
             )}
           </div>
@@ -180,7 +177,8 @@ function QuizDetails() {
                 transition: 'all 0.2s ease'
               }}
             >
-              📋 Quiz Details
+              <HiInformationCircle style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+              Detalji o kvizu
             </button>
             <button
               onClick={() => setActiveTab('teams')}
@@ -196,7 +194,8 @@ function QuizDetails() {
                 display: isViewOnly ? 'none' : 'block'
               }}
             >
-              👥 Teams ({quizTeams ? quizTeams.registered_count || 0 : 0})
+              <RiTeamFill style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+              Timovi ({quizTeams ? quizTeams.registered_count || 0 : 0})
             </button>
           </div>
         </div>
@@ -230,14 +229,14 @@ function QuizDetails() {
 
               {/* Quick Stats */}
               <div className="card" style={{ marginTop: '24px' }}>
-                <h3 className="card-title" style={{ marginBottom: '24px' }}>Quick Stats</h3>
+                <h3 className="card-title" style={{ marginBottom: '24px' }}>Statistika</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: quiz.capacity ? '1fr 1fr 1fr' : '1fr 1fr', gap: '20px' }}>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '32px', color: '#214a9c', fontWeight: '700' }}>
                       {quiz.fee ? `${quiz.fee}` : '0'}
                     </div>
                     <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.7)', textTransform: 'uppercase' }}>
-                      {quiz.fee ? 'RSD Entry Fee' : 'Free Entry'}
+                      {quiz.fee ? 'RSD Kotizacija' : 'Besplatno'}
                     </div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
@@ -245,7 +244,7 @@ function QuizDetails() {
                       {quiz.min_team_size}-{quiz.max_team_size}
                     </div>
                     <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.7)', textTransform: 'uppercase' }}>
-                      Team Members
+                      Veličina tima
                     </div>
                   </div>
                   {quiz.capacity && (
@@ -254,7 +253,7 @@ function QuizDetails() {
                         {quiz.remaining_capacity || (quiz.capacity - (quiz.registered_teams_count || 0))}
                       </div>
                       <div style={{ fontSize: '12px', color: 'rgba(228, 230, 234, 0.7)', textTransform: 'uppercase' }}>
-                        Spots Left
+                        Broj preostalih mesta
                       </div>
                     </div>
                   )}
@@ -266,7 +265,7 @@ function QuizDetails() {
             <div>
               {/* Description */}
               <div className="card">
-                <h3 className="card-title" style={{ marginBottom: '16px' }}>About This Quiz</h3>
+                <h3 className="card-title" style={{ marginBottom: '16px' }}>O kvizu</h3>
                 <p style={{ 
                   fontSize: '16px', 
                   lineHeight: '1.6', 
@@ -279,7 +278,7 @@ function QuizDetails() {
 
               {/* Event Details */}
               <div className="card">
-                <h3 className="card-title" style={{ marginBottom: '24px' }}>Event Details</h3>
+                <h3 className="card-title" style={{ marginBottom: '24px' }}>Detalji događaja</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{ 
@@ -292,12 +291,12 @@ function QuizDetails() {
                       justifyContent: 'center',
                       fontSize: '20px'
                     }}>
-                      📅
+                      <PiCalendar/>
                     </div>
                     <div>
-                      <div style={{ fontWeight: '600', color: '#e4e6ea' }}>Date & Time</div>
+                      <div style={{ fontWeight: '600', color: '#e4e6ea' }}>Datum i vreme</div>
                       <div style={{ color: 'rgba(228, 230, 234, 0.8)', fontSize: '14px' }}>
-                        {formatDate(quiz.date)} at {formatTime(quiz.time)}
+                        {formatDate(quiz.date)} u {formatTime(quiz.time)}
                       </div>
                     </div>
                   </div>
@@ -313,10 +312,10 @@ function QuizDetails() {
                       justifyContent: 'center',
                       fontSize: '20px'
                     }}>
-                      📍
+                      <PiMapPinThin/>
                     </div>
                     <div>
-                      <div style={{ fontWeight: '600', color: '#e4e6ea' }}>Location</div>
+                      <div style={{ fontWeight: '600', color: '#e4e6ea' }}>Lokacija</div>
                       <div style={{ color: 'rgba(228, 230, 234, 0.8)', fontSize: '14px' }}>
                         {quiz.venue}
                       </div>
@@ -334,14 +333,14 @@ function QuizDetails() {
                       justifyContent: 'center',
                       fontSize: '20px'
                     }}>
-                      👥
+                      <BiGroup/>
                     </div>
                     <div>
-                      <div style={{ fontWeight: '600', color: '#e4e6ea' }}>Team Size</div>
+                      <div style={{ fontWeight: '600', color: '#e4e6ea' }}>Veličina tima</div>
                       <div style={{ color: 'rgba(228, 230, 234, 0.8)', fontSize: '14px' }}>
                         {quiz.min_team_size === quiz.max_team_size 
-                          ? `Exactly ${quiz.min_team_size} members`
-                          : `${quiz.min_team_size} - ${quiz.max_team_size} members`
+                          ? `Tačno ${quiz.min_team_size} članova`
+                          : `${quiz.min_team_size} - ${quiz.max_team_size} članova`
                         }
                       </div>
                     </div>
@@ -358,12 +357,12 @@ function QuizDetails() {
                       justifyContent: 'center',
                       fontSize: '20px'
                     }}>
-                      💰
+                      <BiMoney/>
                     </div>
                     <div>
-                      <div style={{ fontWeight: '600', color: '#e4e6ea' }}>Entry Fee</div>
+                      <div style={{ fontWeight: '600', color: '#e4e6ea' }}>Kotizacija</div>
                       <div style={{ color: 'rgba(228, 230, 234, 0.8)', fontSize: '14px' }}>
-                        {quiz.fee ? `${quiz.fee} RSD per team` : 'Free participation'}
+                        {quiz.fee ? `${quiz.fee} RSD po timu` : 'Besplatno učešće'}
                       </div>
                     </div>
                   </div>
@@ -380,12 +379,12 @@ function QuizDetails() {
                         justifyContent: 'center',
                         fontSize: '20px'
                       }}>
-                        🏟️
+                        <FaBuilding/>
                       </div>
                       <div>
-                        <div style={{ fontWeight: '600', color: '#e4e6ea' }}>Venue Capacity</div>
+                        <div style={{ fontWeight: '600', color: '#e4e6ea' }}>Kapacitet lokala</div>
                         <div style={{ color: 'rgba(228, 230, 234, 0.8)', fontSize: '14px' }}>
-                          {quiz.capacity} teams maximum
+                          {quiz.capacity} timova maksimum
                         </div>
                       </div>
                     </div>
@@ -395,30 +394,7 @@ function QuizDetails() {
 
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                {isUpcoming() && !isViewOnly ? (
-                  <button 
-                    onClick={() => setActiveTab('teams')} 
-                    className="btn btn-primary btn-lg" 
-                    style={{ flex: 1, minWidth: '200px' }}
-                  >
-                    🎯 Manage Teams
-                  </button>
-                ) : isUpcoming() && isViewOnly ? (
-                  <div className="card" style={{ 
-                    padding: '16px', 
-                    textAlign: 'center', 
-                    background: 'rgba(33, 74, 156, 0.1)',
-                    borderColor: 'rgba(33, 74, 156, 0.3)'
-                  }}>
-                    <p style={{ margin: 0, color: '#214a9c', fontSize: '14px' }}>
-                      ℹ️ To manage teams for this quiz, go to <strong>Manage Quizzes</strong>
-                    </p>
-                  </div>
-                ) : (
-                  <button className="btn btn-secondary btn-lg" style={{ flex: 1, minWidth: '200px' }} disabled>
-                    📝 Quiz Ended
-                  </button>
-                )}
+
                 
                 <button className="btn btn-secondary" onClick={() => window.print()}>
                   🖨️ Print Details
@@ -458,6 +434,7 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
   const [showAddTeamModal, setShowAddTeamModal] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [processingTeam, setProcessingTeam] = useState(null)
 
   // Fetch all teams for this organization
   const fetchOrgTeams = async () => {
@@ -479,24 +456,85 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
   }, [quiz?.organization_id])
 
   const handleApplyTeam = async (teamId) => {
+    setProcessingTeam(teamId)
     try {
       await teamService.applyTeamForQuiz(teamId, quiz.id)
-      setSuccess('Team application submitted successfully!')
-      onTeamsUpdate() // Refresh quiz teams data
-      fetchOrgTeams() // Refresh org teams to update registration status
+      setSuccess('Prijava tima je uspešno poslata!')
+      onTeamsUpdate()
+      fetchOrgTeams()
     } catch (err) {
-      setError(err.message || 'Failed to submit team application')
+      setError(err.message || 'Nije uspelo slanje prijave tima')
+    } finally {
+      setProcessingTeam(null)
     }
   }
 
-  const handleUnregisterTeam = async (teamId) => {
+  const handleApproveTeam = async (teamId) => {
+    setProcessingTeam(teamId)
+    try {
+      await teamService.approveTeamApplication(teamId, quiz.id)
+      setSuccess('Tim je uspešno potvrdjen!')
+      onTeamsUpdate()
+      fetchOrgTeams()
+    } catch (err) {
+      setError(err.message || 'Nije uspelo potvrđivanje tima')
+    } finally {
+      setProcessingTeam(null)
+    }
+  }
+
+  const handleDeleteTeam = async (teamId) => {
+    if (!confirm('Da li ste sigurni da želite da obrišete ovaj tim iz baze podataka? Ova akcija je nepovratna.')) {
+      return
+    }
+    
+    setProcessingTeam(teamId)
+    try {
+      // Delete team from database (not just the registration)
+      await teamService.deleteTeam(teamId)
+      setSuccess('Tim je uspešno obrisan iz baze podataka!')
+      onTeamsUpdate()
+      fetchOrgTeams()
+    } catch (err) {
+      setError(err.message || 'Nije uspelo brisanje tima')
+    } finally {
+      setProcessingTeam(null)
+    }
+  }
+
+  const handleRejectApplication = async (teamId) => {
+    if (!confirm('Da li ste sigurni da želite da obrišete prijavu ovog tima za kviz?')) {
+      return
+    }
+    
+    setProcessingTeam(teamId)
+    try {
+      await teamService.rejectTeamApplication(teamId, quiz.id)
+      setSuccess('Prijava tima je uspešno obrisana!')
+      onTeamsUpdate()
+      fetchOrgTeams()
+    } catch (err) {
+      setError(err.message || 'Nije uspelo brisanje prijave')
+    } finally {
+      setProcessingTeam(null)
+    }
+  }
+
+  const handleCancelRegistration = async (teamId) => {
+    if (!confirm('Da li ste sigurni da želite da otkažete registraciju ovog tima?')) {
+      return
+    }
+    
+    setProcessingTeam(teamId)
     try {
       await teamService.unregisterTeamFromQuiz(teamId, quiz.id)
-      setSuccess('Team unregistered successfully!')
-      onTeamsUpdate() // Refresh quiz teams data
-      fetchOrgTeams() // Refresh org teams
+      setSuccess('Registracija tima je uspešno otkazana!')
+      onTeamsUpdate()
+      fetchOrgTeams()
     } catch (err) {
-      setError(err.message || 'Failed to unregister team')
+      setError(err.message || 'Nije uspelo otkazivanje registracije')
+    } finally {
+      setProcessingTeam(null)
     }
   }
 
@@ -508,12 +546,31 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
     return '#28a745'
   }
 
-  const getAppliedTeamIds = () => {
-    return quizTeams?.teams?.filter(team => team.pivot.status === 'pending').map(team => team.id) || []
+  const getPendingTeams = () => {
+    return quizTeams?.teams?.filter(team => team.pivot.status === 'pending') || []
   }
 
-  const getRegisteredTeamIds = () => {
-    return quizTeams?.teams?.filter(team => team.pivot.status === 'registered').map(team => team.id) || []
+  const getRegisteredTeams = () => {
+    return quizTeams?.teams?.filter(team => team.pivot.status === 'registered') || []
+  }
+
+  const getTeamStatus = (teamId) => {
+    const quizTeam = quizTeams?.teams?.find(t => t.id === teamId)
+    if (!quizTeam) return null
+    return quizTeam.pivot.status
+  }
+
+  // Filter out registered teams from organization teams list
+  const getAvailableOrgTeams = () => {
+    if (!quizTeams?.teams || !orgTeams) return []
+
+    const registeredTeamIds = getRegisteredTeams().map(t => t.id)
+
+    // Filter out teams that are already registered (have status 'registered')
+    return orgTeams.filter(team => {
+      const isRegistered = registeredTeamIds.includes(team.id)
+      return !isRegistered // Only show teams that are NOT registered
+    })
   }
 
   return (
@@ -528,7 +585,7 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
           borderRadius: '8px',
           color: '#28a745'
         }}>
-          ✅ {success}
+           {success}
         </div>
       )}
       
@@ -546,11 +603,11 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
-        {/* Left Side - Registered Teams */}
+        {/* Left Side - Registered Teams (Potvđeni) */}
         <div>
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3 className="card-title">Registered Teams</h3>
+              <h3 className="card-title">Registrovani timovi</h3>
               {quiz.capacity && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{
@@ -568,69 +625,54 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
                     }} />
                   </div>
                   <span style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.8)' }}>
-                    {quiz.registered_teams_count || 0}/{quiz.capacity}
+                    {getRegisteredTeams().length}/{quiz.capacity}
                   </span>
                 </div>
               )}
             </div>
 
-            {quizTeams?.teams?.length > 0 ? (
+            {getRegisteredTeams().length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {quizTeams.teams
-                  .filter(team => team.pivot.status === 'registered')
-                  .map((team, index) => (
+                {getRegisteredTeams().map((team) => (
                   <div key={team.id} style={{
                     padding: '16px',
-                    background: 'rgba(33, 74, 156, 0.05)',
-                    border: '1px solid rgba(33, 74, 156, 0.2)',
+                    background: 'rgba(40, 167, 69, 0.05)',
+                    border: '1px solid rgba(40, 167, 69, 0.3)',
                     borderRadius: '8px'
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                      <div>
+                      <div style={{ flex: 1 }}>
                         <h4 style={{ margin: '0 0 8px 0', color: '#e4e6ea' }}>
-                          #{index + 1} {team.name}
+                          {team.name}
                         </h4>
+                        <div style={{ fontSize: '13px', marginBottom: '4px', fontWeight: '500', color: '#28a745' }}>
+                          Status: Potvrđen dolazak
+                        </div>
                         <div style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
-                          👥 {team.member_count} members
+                          👥 {team.member_count} članova
                         </div>
                         {team.contact_phone && (
                           <div style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
                             📞 {team.contact_phone}
                           </div>
                         )}
-                        {team.contact_email && (
-                          <div style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
-                            ✉️ {team.contact_email}
-                          </div>
-                        )}
-                        {team.pivot.final_position && (
-                          <div style={{ 
-                            marginTop: '8px',
-                            padding: '4px 8px',
-                            background: '#f39c12',
-                            color: '#fff',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            display: 'inline-block'
-                          }}>
-                            🏆 {team.pivot.final_position === 1 ? '1st Place' : 
-                                team.pivot.final_position === 2 ? '2nd Place' : '3rd Place'}
-                          </div>
-                        )}
                       </div>
                       <button
-                        onClick={() => handleUnregisterTeam(team.id)}
+                        onClick={() => handleCancelRegistration(team.id)}
+                        disabled={processingTeam === team.id}
+                        className="btn btn-sm"
                         style={{
-                          padding: '4px 8px',
+                          padding: '6px 12px',
                           background: 'rgba(220, 53, 69, 0.1)',
                           border: '1px solid rgba(220, 53, 69, 0.3)',
                           borderRadius: '4px',
                           color: '#dc3545',
-                          cursor: 'pointer',
-                          fontSize: '12px'
+                          cursor: processingTeam === team.id ? 'not-allowed' : 'pointer',
+                          fontSize: '12px',
+                          whiteSpace: 'nowrap'
                         }}
                       >
-                        Remove
+                        {processingTeam === team.id ? '⏳' : 'Otkaži'}
                       </button>
                     </div>
                   </div>
@@ -638,93 +680,116 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(228, 230, 234, 0.6)' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
-                <p>No teams registered yet</p>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}><BiGroup/></div>
+                <p>Još uvek nema potvrđenih timova</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Side - Available Teams */}
+        {/* Right Side - All Organization Teams */}
         <div>
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3 className="card-title">Organization Teams</h3>
+              <h3 className="card-title">Timovi organizacije</h3>
               <button
                 onClick={() => setShowAddTeamModal(true)}
                 className="btn btn-primary btn-sm"
               >
-                + Add New Team
+                + Dodaj novi tim
               </button>
             </div>
 
             {loading ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>
                 <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔄</div>
-                Loading teams...
+                Učitavanje timova...
               </div>
-            ) : orgTeams.length > 0 ? (
+            ) : getAvailableOrgTeams().length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {orgTeams.map(team => {
-                  const isRegistered = getRegisteredTeamIds().includes(team.id)
-                  const isApplied = getAppliedTeamIds().includes(team.id)
-                  const canApply = !isRegistered && !isApplied && (!quiz.capacity || (quiz.registered_teams_count || 0) < quiz.capacity)
-                  
+                {getAvailableOrgTeams().map(team => {
+                  const teamStatus = getTeamStatus(team.id)
+                  const isPending = teamStatus === 'pending'
+
                   return (
                     <div key={team.id} style={{
                       padding: '16px',
-                      background: isRegistered ? 'rgba(40, 167, 69, 0.05)' : 
-                                  isApplied ? 'rgba(255, 193, 7, 0.05)' : 
+                      background: isPending ? 'rgba(255, 193, 7, 0.05)' : 
                                   'rgba(228, 230, 234, 0.05)',
-                      border: `1px solid ${isRegistered ? 'rgba(40, 167, 69, 0.2)' : 
-                                           isApplied ? 'rgba(255, 193, 7, 0.2)' : 
+                      border: `1px solid ${isPending ? 'rgba(255, 193, 7, 0.3)' : 
                                            'rgba(228, 230, 234, 0.2)'}`,
                       borderRadius: '8px'
                     }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                        <div>
-                          <h4 style={{ margin: '0 0 8px 0', color: '#e4e6ea' }}>
-                            {team.name} {isRegistered && '✅'} {isApplied && '⏳'}
-                          </h4>
-                          <div style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
-                            👥 {team.member_count} members
-                          </div>
-                          {team.contact_phone && (
-                            <div style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
-                              📞 {team.contact_phone}
-                            </div>
-                          )}
+                      <div style={{ marginBottom: isPending ? '12px' : '0' }}>
+                        <h4 style={{ margin: '0 0 8px 0', color: '#e4e6ea' }}>
+                          {team.name}
+                        </h4>
+                        <div style={{ fontSize: '13px', marginBottom: '4px', fontWeight: '500', color: isPending ? '#ffc107' : 'rgba(228, 230, 234, 0.7)' }}>
+                          {isPending && 'Status: Na čekanju'}
+                          {!teamStatus && 'Status: Nije prijavljen'}
                         </div>
-                        {canApply && (
+                        <div style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
+                          👥 {team.member_count} članova
+                        </div>
+                        {team.contact_phone && (
+                          <div style={{ fontSize: '14px', color: 'rgba(228, 230, 234, 0.7)' }}>
+                            📞 {team.contact_phone}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                        {isPending && (
+                          <>
+                            <button
+                              onClick={() => handleApproveTeam(team.id)}
+                              disabled={processingTeam === team.id}
+                              className="btn btn-sm btn-primary"
+                              style={{ flex: 1 }}
+                            >
+                              {processingTeam === team.id ? '⏳' : 'Potvrdi dolazak'}
+                            </button>
+                            <button
+                              onClick={() => handleRejectApplication(team.id)}
+                              disabled={processingTeam === team.id}
+                              className="btn btn-sm"
+                              style={{
+                                flex: 1,
+                                background: 'rgba(220, 53, 69, 0.1)',
+                                border: '1px solid rgba(220, 53, 69, 0.3)',
+                                color: '#dc3545'
+                              }}
+                            >
+                              {processingTeam === team.id ? '⏳' : 'Odbij prijavu'}
+                            </button>
+                          </>
+                        )}
+                        
+                        {!teamStatus && (
                           <button
                             onClick={() => handleApplyTeam(team.id)}
-                            className="btn btn-primary btn-sm"
+                            disabled={processingTeam === team.id}
+                            className="btn btn-sm btn-primary"
+                            style={{ flex: 1 }}
                           >
-                            Apply
+                            {processingTeam === team.id ? '⏳' : 'Prijavi za kviz'}
                           </button>
                         )}
-                        {isApplied && (
-                          <span style={{ 
-                            padding: '4px 8px',
-                            background: 'rgba(255, 193, 7, 0.2)',
-                            color: '#ffc107',
-                            borderRadius: '4px',
-                            fontSize: '12px'
-                          }}>
-                            Pending
-                          </span>
-                        )}
-                        {isRegistered && (
-                          <span style={{ 
-                            padding: '4px 8px',
-                            background: 'rgba(40, 167, 69, 0.2)',
-                            color: '#28a745',
-                            borderRadius: '4px',
-                            fontSize: '12px'
-                          }}>
-                            Registered
-                          </span>
-                        )}
+                        
+                        <button
+                          onClick={() => handleDeleteTeam(team.id)}
+                          disabled={processingTeam === team.id}
+                          className="btn btn-sm"
+                          style={{
+                            background: 'rgba(220, 53, 69, 0.15)',
+                            border: '1px solid rgba(220, 53, 69, 0.4)',
+                            color: '#dc3545',
+                            padding: '6px 12px',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {processingTeam === team.id ? '⏳' : 'Obriši tim'}
+                        </button>
                       </div>
                     </div>
                   )
@@ -732,15 +797,15 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(228, 230, 234, 0.6)' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
-                <p>No teams created yet</p>
-                <button
-                  onClick={() => setShowAddTeamModal(true)}
-                  className="btn btn-primary"
-                  style={{ marginTop: '16px' }}
-                >
-                  Create First Team
-                </button>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}><HiDocument/></div>
+                <p>Nema dostupnih timova</p>
+                {/*<button*/}
+                {/*  onClick={() => setShowAddTeamModal(true)}*/}
+                {/*  className="btn btn-primary"*/}
+                {/*  style={{ marginTop: '16px' }}*/}
+                {/*>*/}
+                {/*  Kreiraj novi tim*/}
+                {/*</button>*/}
               </div>
             )}
           </div>
@@ -759,8 +824,8 @@ function TeamsTabContent({ quiz, quizTeams, organization, onTeamsUpdate }) {
           }}
           onTeamAdded={(newTeam) => {
             setShowAddTeamModal(false)
-            fetchOrgTeams()
-            setSuccess('Team created successfully!')
+            // Automatically apply the new team to the quiz
+            handleApplyTeam(newTeam.id)
           }}
         />
       )}
@@ -835,7 +900,7 @@ function AddTeamModal({ quiz, organization, onClose, onTeamAdded }) {
         maxHeight: '90vh',
         overflowY: 'auto'
       }}>
-        <h3 style={{ margin: '0 0 24px 0', color: '#e4e6ea' }}>Add New Team</h3>
+        <h3 style={{ margin: '0 0 24px 0', color: '#e4e6ea' }}>Dodaj novi tim</h3>
         
         {errors.general && (
           <div style={{
@@ -854,7 +919,7 @@ function AddTeamModal({ quiz, organization, onClose, onTeamAdded }) {
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '6px', color: 'rgba(228, 230, 234, 0.9)', fontSize: '14px' }}>
-              Team Name *
+              Ime tima *
             </label>
             <input
               type="text"
@@ -876,7 +941,7 @@ function AddTeamModal({ quiz, organization, onClose, onTeamAdded }) {
 
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '6px', color: 'rgba(228, 230, 234, 0.9)', fontSize: '14px' }}>
-              Number of Members *
+              Broj članova u timu *
             </label>
             <input
               type="number"
@@ -900,7 +965,7 @@ function AddTeamModal({ quiz, organization, onClose, onTeamAdded }) {
 
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '6px', color: 'rgba(228, 230, 234, 0.9)', fontSize: '14px' }}>
-              Contact Phone
+                Kontakt telefon
             </label>
             <input
               type="text"
@@ -921,7 +986,7 @@ function AddTeamModal({ quiz, organization, onClose, onTeamAdded }) {
 
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '6px', color: 'rgba(228, 230, 234, 0.9)', fontSize: '14px' }}>
-              Contact Email
+              Kontakt email
             </label>
             <input
               type="email"
@@ -942,7 +1007,7 @@ function AddTeamModal({ quiz, organization, onClose, onTeamAdded }) {
 
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', marginBottom: '6px', color: 'rgba(228, 230, 234, 0.9)', fontSize: '14px' }}>
-              Notes
+              Dodatne napomene
             </label>
             <textarea
               value={formData.notes}
@@ -975,7 +1040,7 @@ function AddTeamModal({ quiz, organization, onClose, onTeamAdded }) {
                 cursor: 'pointer'
               }}
             >
-              Cancel
+              Otkaži
             </button>
             <button
               type="submit"
@@ -989,7 +1054,7 @@ function AddTeamModal({ quiz, organization, onClose, onTeamAdded }) {
                 cursor: loading ? 'not-allowed' : 'pointer'
               }}
             >
-              {loading ? 'Creating...' : 'Create Team'}
+              {loading ? 'Kreiranje u toku...' : 'Kreiraj tim'}
             </button>
           </div>
         </form>
@@ -999,3 +1064,4 @@ function AddTeamModal({ quiz, organization, onClose, onTeamAdded }) {
 }
 
 export default QuizDetails
+

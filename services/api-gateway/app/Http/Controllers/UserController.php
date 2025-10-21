@@ -5,225 +5,50 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\Rule;
-use Illuminate\Http\Client\Response;
 
 class UserController extends Controller
 {
-    /** Robustno dekodiranje: skida BOM, hvata duplo-enkodovan JSON, vraća array ili [] */
-    private function decodeJsonFlexible(Response $resp): array
-    {
-        $body = $resp->body() ?? '';
-        // skini BOM / endian markere
-        $clean = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
-
-        // 1) direktno decode
-        $data = json_decode($clean, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($data)) {
-            return $data;
-        }
-
-        // 2) ako je odgovor string koji SADRŽI JSON (duplo enkodovan)
-        $dataString = json_decode($clean, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_string($dataString)) {
-            $data2 = json_decode($dataString, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($data2)) {
-                return $data2;
-            }
-        }
-
-        // 3) poslednji pokušaj – ako je top-level string sa JSON-om
-        if (is_string($dataString)) {
-            $data3 = json_decode($dataString, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($data3)) {
-                return $data3;
-            }
-        }
-
-        \Log::warning('decodeJsonFlexible: JSON decode failed', [
-            'status' => $resp->status(),
-            'len'    => strlen($body),
-            'err'    => json_last_error_msg(),
-            'peek'   => substr($clean, 0, 128),
-        ]);
-        return [];
-    }
-
-    /** Lista iz payload-a: prihvata [], {data:[]}, {items:[]} */
-    private function normalizeList(mixed $payload): array
-    {
-        if (!is_array($payload)) return [];
-        if (array_key_exists('data', $payload) && is_array($payload['data']))  return $payload['data'];
-        if (array_key_exists('items', $payload) && is_array($payload['items'])) return $payload['items'];
-        return $payload; // već je lista
-    }
-
-    /** Normalizacija člana (user_id/role u raznim oblicima) */
-    private function normalizeMember(array $m): array
-    {
-        $userId = $m['user_id'] ?? $m['userId'] ?? $m['id'] ?? null;
-        $role   = $m['role'] ?? ($m['pivot']['role'] ?? null) ?? ($m['role']['name'] ?? null);
-
-        return ['user_id' => $userId, 'role' => $role];
-    }
-
-    public function index(Request $request)
+    /** Vraća listu svih korisnika (bez poziva na org-svc) */
+    public function index()
     {
         $users = User::select(['id', 'name', 'email', 'role', 'created_at'])->get();
-        foreach ($users as $u) {
-            $u->organization_name = null;
-            $u->organization_role = null;
-        }
-
-        try {
-            $orgSvcUrl      = config('services.org_service.url', env('ORG_SVC_URL', 'http://localhost:8001'));
-            $internalSecret = config('services.internal_auth_token', env('INTERNAL_SHARED_SECRET', 'devsecret123'));
-            $currentUserId  = optional($request->user())->id ?? 1;
-
-            \Log::debug("Fetching orgs from: {$orgSvcUrl}/api/internal/organizations", [
-                'user_id' => $currentUserId,
-                'internal_secret' => $internalSecret ? 'present' : 'missing'
-            ]);
-
-            $orgResponse = Http::timeout(10)->withHeaders([
-                'X-Internal-Auth' => $internalSecret,
-                'X-User-Id'       => $currentUserId,
-                'Accept'          => 'application/json',
-            ])->get($orgSvcUrl . '/api/internal/organizations');
-
-            if (!$orgResponse->successful()) {
-                \Log::error("Failed to fetch organizations", ['status' => $orgResponse->status(), 'body' => $orgResponse->body()]);
-                return response()->json($users); // vrati barem korisnike
-            }
-
-            // ✅ robustno parsiranje (umesto ->json())
-            $orgPayload     = $this->decodeJsonFlexible($orgResponse);
-            $organizations  = $this->normalizeList($orgPayload);
-
-            \Log::debug("Found organizations", [
-                'count'     => count($organizations),
-                'first_org' => $organizations[0] ?? null,
-            ]);
-
-            $allMembers = [];
-
-            foreach ($organizations as $org) {
-                $orgId = $org['id'] ?? null;
-                if (!$orgId) continue;
-
-                // \Log::debug("Fetching members for org", ['org_id' => $orgId]);
-
-                $membersResponse = Http::timeout(10)->withHeaders([
-                    'X-Internal-Auth' => $internalSecret,
-                    'X-User-Id'       => $currentUserId,
-                    'Accept'          => 'application/json',
-                ])->get($orgSvcUrl . "/api/internal/organizations/{$orgId}/members");
-
-                if (!$membersResponse->successful()) {
-                    \Log::warning("Members fetch failed", [
-                        'org_id' => $orgId,
-                        'status' => $membersResponse->status(),
-                        'body'   => $membersResponse->body()
-                    ]);
-                    continue;
-                }
-
-                $membersPayload = $this->decodeJsonFlexible($membersResponse);
-                $membersList    = $this->normalizeList($membersPayload);
-
-                // \Log::debug("Found members for org {$orgId}", [
-                //     'count' => count($membersList),
-                // ]);
-
-                foreach ($membersList as $rawMember) {
-                    $m = $this->normalizeMember($rawMember);
-                    // \Log::debug("info o memberu", ['member' => $m]);
-                    if (!$m['user_id']) continue;
-                    // \Log::debug("Mapping member", ['user_id' => $m['user_id'], 'role' => $m['role'], 'org_name' => $org['name'] ?? null]);
-                    $allMembers[$m['user_id']] = [
-                        'organization_name' => $org['name'] ?? null,
-                        'organization_role' => $m['role'] ?? null,
-                    ];
-                }
-                \Log::debug("svi memeberii", ['allMembers' => $allMembers]);
-            }
-
-                foreach ($users as $u) {
-                    \Log::debug("Merging user", ['id' => $u->id, 'hasMember' => isset($allMembers[$u->id])]);
-                    if (isset($allMembers[$u->id])) {
-                        $u->organization_name = $allMembers[$u->id]['organization_name'];
-                        $u->organization_role = $allMembers[$u->id]['organization_role'];
-                        $u->organization_id = $allMembers[$u->id]['organization_id'] ?? null;
-                    \Log::debug("informaciojeee", ['user' => $u]);
-                    }
-                }
-        } catch (\Throwable $e) {
-            \Log::error("Error fetching organization data: " . $e->getMessage());
-        }
 
         return response()->json($users);
     }
 
+    /** Vraća pojedinačnog korisnika */
     public function show($id)
     {
-        $user = User::select(['id', 'name', 'email', 'role', 'created_at'])->findOrFail($id);
-        
-        $user->organization_name = null;
-        $user->organization_role = null;
-        
-        try {
-            // Pozovi org-svc da dobijemo sve organizacije
-            $response = Http::withHeaders([
-                'X-Internal-Auth' => config('services.internal_auth_token'),
-                'Accept' => 'application/json',
-            ])->get(config('services.org_service.url') . "/api/internal/organizations");
-            
-                $organizations = $response->json();
-                
-                // Za svaku organizaciju provjeri da li je korisnik član
-                foreach ($organizations as $org) {
-                    $membersResponse = Http::withHeaders([
-                        'X-Internal-Auth' => config('services.internal_auth_token'),
-                        'Accept' => 'application/json',
-                    ])->get(config('services.org_service.url') . "/api/internal/organizations/{$org['id']}/members");
-                    
-                        $members = $membersResponse->json();
-                        foreach ($users as $u) {
-                            \Log::debug("Merging user", ['id' => $u->id, 'hasMember' => isset($allMembers[$u->id])]);
-                            if (isset($allMembers[$u->id])) {
-                                $u->organization_name = $allMembers[$u->id]['organization_name'];
-                                $u->organization_role = $allMembers[$u->id]['organization_role'];
-                                $u->organization_id = $allMembers[$u->id]['organization_id'] ?? null;
-                            }
-                        }
-                    
-                }
-            
-        } catch (\Exception $e) {
-            \Log::error("Failed to fetch organization for user {$user->id}: " . $e->getMessage());
-        }
-        
+        $user = User::select(['id', 'name', 'email', 'role', 'created_at'])
+            ->findOrFail($id);
+
         return response()->json($user);
     }
 
+    /** Kreira novog korisnika */
     public function store(Request $request)
     {
         try {
+            \Log::info('Creating user with data: ' . json_encode($request->only(['name', 'email', 'role'])));
+
             $data = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users',
+                'name'     => 'required|string|max:255',
+                'email'    => 'required|string|email|max:255|unique:users',
                 'password' => 'required|string|min:8|confirmed',
-                'role' => ['required', Rule::in(['SUPER_ADMIN', 'USER'])],
+                'role'     => ['required', Rule::in(['SUPER_ADMIN', 'USER'])],
             ]);
 
             $user = User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
+                'name'     => $data['name'],
+                'email'    => $data['email'],
                 'password' => Hash::make($data['password']),
-                'role' => $data['role'],
+                'role'     => $data['role'],
             ]);
 
+            \Log::info('User created successfully', ['user_id' => $user->id, 'email' => $user->email]);
+
+            // Return user without password field
             return response()->json([
                 'id' => $user->id,
                 'name' => $user->name,
@@ -231,52 +56,69 @@ class UserController extends Controller
                 'role' => $user->role,
                 'created_at' => $user->created_at,
             ], 201);
-            
+
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            \Log::error('User creation failed: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'User creation failed',
-                'error' => $e->getMessage()
-            ], 500);
+            \Log::warning('User validation failed', ['errors' => $e->errors()]);
+            return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            \Log::error('User creation failed: ' . $e->getMessage(), [
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'User creation failed', 'error' => $e->getMessage()], 500);
         }
     }
 
+    /** Ažurira postojećeg korisnika */
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
-        
-        $data = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'email' => ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'password' => 'sometimes|string|min:8|confirmed',
-            'role' => ['sometimes', 'required', Rule::in(['SUPER_ADMIN', 'USER'])],
-        ]);
+        try {
+            $user = User::findOrFail($id);
 
-        if (isset($data['password'])) {
-            $data['password'] = Hash::make($data['password']);
+            \Log::info('Updating user', ['user_id' => $id, 'data' => $request->only(['name', 'email', 'role'])]);
+
+            $data = $request->validate([
+                'name'     => 'sometimes|required|string|max:255',
+                'email'    => ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+                'password' => 'sometimes|string|min:8|confirmed',
+                'role'     => ['sometimes', 'required', Rule::in(['SUPER_ADMIN', 'USER'])],
+            ]);
+
+            if (isset($data['password'])) {
+                $data['password'] = Hash::make($data['password']);
+            }
+
+            $user->update($data);
+
+            \Log::info('User updated successfully', ['user_id' => $user->id]);
+
+            // Return user without password field
+            return response()->json([
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::warning('User update validation failed', ['errors' => $e->errors()]);
+            return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            \Log::error('User update failed: ' . $e->getMessage(), [
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'User update failed', 'error' => $e->getMessage()], 500);
         }
-
-        $user->update($data);
-
-        return response()->json([
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'role' => $user->role,
-            'updated_at' => $user->updated_at,
-        ]);
     }
 
+    /** Briše korisnika */
     public function destroy($id)
     {
         $user = User::findOrFail($id);
-        
-        // Ne dozvoli brisanje vlastitog naloga
+
         if ($user->id === auth()->id()) {
             return response()->json(['error' => 'Cannot delete your own account'], 400);
         }

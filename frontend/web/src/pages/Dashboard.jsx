@@ -16,7 +16,7 @@ function Dashboard() {
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 6
+  const itemsPerPage = 8
 
   const fetchQuizzes = async () => {
     try {
@@ -113,7 +113,7 @@ function Dashboard() {
   }
 
   const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('sr-RS', { 
+    return new Date(dateStr).toLocaleDateString('sr-Latn-RS', { 
       day: 'numeric', 
       month: 'long', 
       year: 'numeric' 
@@ -134,14 +134,29 @@ function Dashboard() {
     <div className="main-content">
       <div className="container-fluid">
         <div className="hero">
-          <h1 className="hero-title" style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+          <h1 className="hero-title" style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            gap: '12px',
+            fontFamily: "'Unkempt', cursive",
+            background: 'none',
+            WebkitTextFillColor: 'unset'
+          }}>
+            <img 
+              src="/logo1.png" 
+              alt="Dragon Logo" 
+              style={{ 
+                width: '60px', 
+                height: '60px' 
+              }} 
+            />
             <span style={{ color: '#94994F' }}>Ko</span>
             <span style={{ color: '#F2E394' }}>Zna</span>
             <span style={{ color: '#F2B441' }}>Zna</span>
-            <span style={{ color: '#214a9c', marginLeft: '16px' }}>Belgrade</span>
           </h1>
           <p className="hero-subtitle">
-            Discover and join the most exciting quiz events in Belgrade. Test your knowledge, meet new people, and have fun!
+            Otkrijte i pridružite se  pab kvizovima u Beogradu. Testirajte svoje znanje, upoznajte nove ljude i zabavite se!
           </p>
         </div>
 
@@ -151,7 +166,7 @@ function Dashboard() {
             <input
               type="text"
               className="filter-input"
-              placeholder="Search quizzes..."
+              placeholder="Pretraži kvizove..."
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
               style={{ minWidth: '220px' }}
@@ -159,14 +174,14 @@ function Dashboard() {
           </div>
 
           <div className="filter-item">
-            <label>Organization</label>
+            <label>Organizacija</label>
             <select 
               className="filter-select"
               value={filters.organization}
               onChange={(e) => handleFilterChange('organization', e.target.value)}
               style={{ minWidth: '200px' }}
             >
-              <option value="">All Organizations</option>
+              <option value="">Sve organizacije</option>
               {organizations.map(org => (
                 <option key={org.id} value={org.id}>{org.name}</option>
               ))}
@@ -174,7 +189,7 @@ function Dashboard() {
           </div>
 
           <div className="filter-item">
-            <label>From Date</label>
+            <label>Datum od</label>
             <input
               type="date"
               className="filter-input"
@@ -184,7 +199,7 @@ function Dashboard() {
           </div>
 
           <div className="filter-item">
-            <label>To Date</label>
+            <label>Datum do</label>
             <input
               type="date"
               className="filter-input"
@@ -194,7 +209,7 @@ function Dashboard() {
           </div>
 
           <div className="filter-item">
-            <label>Max Price (RSD)</label>
+            <label>Maksimalna cena (RSD)</label>
             <input
               type="number"
               className="filter-input"
@@ -210,23 +225,23 @@ function Dashboard() {
               className="btn btn-secondary btn-sm" 
               onClick={clearFilters}
             >
-              Clear Filters
+              Poništi filtere
             </button>
           </div>
         </div>
 
         <div style={{ marginBottom: '24px', color: 'rgba(228, 230, 234, 0.7)', fontSize: '14px' }}>
-          Showing <strong>{filteredQuizzes.length}</strong> quiz{filteredQuizzes.length !== 1 ? 'es' : ''}
-          {Object.values(filters).some(Boolean) && ` (filtered from ${quizzes.length} total)`}
+          Prikazano <strong>{filteredQuizzes.length}</strong> kviz{filteredQuizzes.length === 1 ? '' : filteredQuizzes.length > 4 ? 'ova' : 'a'}
+          {Object.values(filters).some(Boolean) && ` (filtrirano od ukupno ${quizzes.length})`}
         </div>
 
         {paginatedQuizzes.length === 0 ? (
           <div className="empty-state">
             <div style={{ fontSize: '64px', marginBottom: '20px' }}>🔍</div>
-            <h3>No quizzes found</h3>
-            <p>Try adjusting your filters or check back later for new quizzes.</p>
+            <h3>Nema pronađenih kvizova</h3>
+            <p>Pokušajte da prilagodite filtere ili proverite ponovo kasnije za nove kvizove.</p>
             <button className="btn btn-primary btn-lg" onClick={clearFilters} style={{ marginTop: '24px' }}>
-              Clear All Filters
+              Ukloni sve filtere
             </button>
           </div>
         ) : (
@@ -258,11 +273,11 @@ function Dashboard() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
                         <span style={{ marginRight: '8px' }}>📅</span>
-                        {formatDate(quiz.date)} at {quiz.time}
+                        {formatDate(quiz.date)} u {quiz.time}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
                         <span style={{ marginRight: '8px' }}>👥</span>
-                        Team: {quiz.min_team_size}-{quiz.max_team_size} members
+                        Tim: {quiz.min_team_size}-{quiz.max_team_size} članova
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         <span style={{ marginRight: '8px' }}>🏢</span>
@@ -272,10 +287,10 @@ function Dashboard() {
 
                     <div className="quiz-card-meta">
                       <span className="quiz-card-price">
-                        {quiz.fee ? `${quiz.fee} RSD` : 'Free'}
+                        {quiz.fee ? `${quiz.fee} RSD` : 'Besplatno'}
                       </span>
                       <span style={{ fontSize: '11px' }}>
-                        {new Date(quiz.date) > new Date() ? '🟢 Upcoming' : '🔴 Past'}
+                        {new Date(quiz.date) > new Date() ? '🟢 Predstojeći' : '🔴 Prošao'}
                       </span>
                     </div>
                   </div>
@@ -289,7 +304,7 @@ function Dashboard() {
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 >
-                  ← Previous
+                  ← Prethodna
                 </button>
                 
                 {Array.from({ length: totalPages }, (_, i) => (
@@ -306,7 +321,7 @@ function Dashboard() {
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 >
-                  Next →
+                  Sledeća →
                 </button>
               </div>
             )}

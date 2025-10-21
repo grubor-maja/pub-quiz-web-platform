@@ -30,9 +30,10 @@ export const AuthProvider = ({ children }) => {
       })
 
       if (response.ok) {
-        const userData = await response.json()
-        setUser(userData)
-        console.log('Fetched user dataaaa:', userData) // Debug info
+  const userData = await response.json()
+          localStorage.setItem('user', JSON.stringify(userData));
+  console.log(userData);
+  setUser(userData)
       } else {
         localStorage.removeItem('token')
         setUser(null)
@@ -78,8 +79,6 @@ export const AuthProvider = ({ children }) => {
     const data = await response.json()
 
     if (response.ok) {
-      // Don't automatically log in after registration
-      // User will need to go to login page and sign in
       return { success: true, message: 'Account created successfully' }
     } else {
       throw new Error(data.message || 'Registration failed')

@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { leagueService } from '../services/leagueService'
 import { organizationService } from '../services/organizationService'
 import { useAuth } from '../contexts/AuthContext'
+import LoadingDragon from '../components/LoadingDragon'
+import {BiTrophy} from "react-icons/bi";
 
 function LeagueForm() {
   const { id } = useParams() // For editing existing league
@@ -12,7 +14,8 @@ function LeagueForm() {
 
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
-  const [organizations, setOrganizations] = useState([])
+  const [userOrganizations, setUserOrganizations] = useState([]) // User's organizations
+  const [allOrganizations, setAllOrganizations] = useState([]) // All organizations (for super admin)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -22,7 +25,7 @@ function LeagueForm() {
     year: new Date().getFullYear(),
     total_rounds: 10,
     description: '',
-    organization_id: user?.organization_id || '',
+    organization_id: '',
     is_active: true
   })
 
@@ -32,14 +35,43 @@ function LeagueForm() {
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 6 }, (_, i) => currentYear - 1 + i)
 
-  // Load organizations if super admin
+  // Load user's organizations
   useEffect(() => {
-    if (user?.role === 'SUPER_ADMIN') {
-      organizationService.getAllOrganizations()
-        .then(data => setOrganizations(data || []))
-        .catch(err => console.error('Error loading organizations:', err))
+    const fetchUserOrganizations = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const response = await fetch('http://localhost:8000/api/users/me/organizations', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setUserOrganizations(data || [])
+
+          // Auto-select organization if user has only one
+          if (data && data.length === 1) {
+            setFormData(prev => ({ ...prev, organization_id: data[0].organization_id }))
+          }
+        }
+      } catch (err) {
+        console.error('Error loading user organizations:', err)
+      }
     }
-  }, [user?.role])
+
+    fetchUserOrganizations()
+  }, [])
+
+  // Load all organizations if super admin
+  useEffect(() => {
+    if (user?.is_super_admin) {
+      organizationService.getAllOrganizations()
+        .then(data => setAllOrganizations(data || []))
+        .catch(err => console.error('Error loading all organizations:', err))
+    }
+  }, [user?.is_super_admin])
 
   // Load league data if editing
   useEffect(() => {
@@ -52,7 +84,7 @@ function LeagueForm() {
             year: league.year || new Date().getFullYear(),
             total_rounds: league.total_rounds || 10,
             description: league.description || '',
-            organization_id: league.organization_id || user?.organization_id || '',
+            organization_id: league.organization_id || '',
             is_active: league.is_active !== undefined ? league.is_active : true
           })
         })
@@ -62,7 +94,7 @@ function LeagueForm() {
         })
         .finally(() => setLoading(false))
     }
-  }, [isEdit, id, user?.organization_id])
+  }, [isEdit, id])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -71,35 +103,28 @@ function LeagueForm() {
     setError('')
 
     try {
-        console.log('=== DEBUG: User koji pokušava da kreira ligu ===');
-        console.log('User object:', user);
-        console.log('User organization_id:', user?.organization_id);
-        console.log('User organization_role:', user?.organization_role);
-        console.log('User role:', user?.role);
-        console.log('FormData organization_id:', formData.organization_id);
-        console.log('=== END DEBUG ===');
-        
-      // For admin users, automatically set their organization
+      // Validate organization selection
+      if (!formData.organization_id) {
+        setError('Morate izabrati organizaciju')
+        setSaving(false)
+        return
+      }
+
       const dataToSend = {
         ...formData,
         user_id: user.id,
-        organization_id: user?.organization_role === 'ADMIN' ? user.organization_id : formData.organization_id
+        organization_id: parseInt(formData.organization_id)
       }
-
-      console.log('Data to send:', dataToSend);
 
       if (isEdit) {
         await leagueService.updateLeague(id, dataToSend)
-        setSuccess('Liga je uspešno ažurirana!')
+        alert(' Liga je uspešno ažurirana!')
+        navigate('/leagues')
       } else {
         await leagueService.createLeague(dataToSend)
-        setSuccess('Liga je uspešno kreirana!')
+        alert(' Liga je uspešno kreirana!')
+        navigate('/leagues')
       }
-
-      // Redirect back after 1.5 seconds
-      setTimeout(() => {
-        navigate('/manage-leagues')
-      }, 1500)
     } catch (err) {
       console.error('Save league error:', err)
       if (err.message.includes('validation')) {
@@ -113,17 +138,14 @@ function LeagueForm() {
   }
 
   const handleCancel = () => {
-    navigate('/manage-leagues')
+    navigate('/leagues')
   }
 
   if (loading) {
     return (
       <div className="main-content">
         <div className="container-fluid">
-          <div className="loading">
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏆</div>
-            Učitavanje...
-          </div>
+          <LoadingDragon />
         </div>
       </div>
     )
@@ -172,7 +194,7 @@ function LeagueForm() {
 
         <div className="page-header" style={{ marginBottom: '32px' }}>
           <h1 className="page-title">
-            🏆 {isEdit ? 'Edituj ligu' : 'Kreiraj novu ligu'}
+            <BiTrophy/> {isEdit ? 'Edituj ligu' : 'Kreiraj novu ligu'}
           </h1>
         </div>
 
@@ -190,26 +212,35 @@ function LeagueForm() {
               </div>
             )}
 
-            {/* Organization Selection (Super Admin only) */}
-            {user?.role === 'SUPER_ADMIN' && (
-              <div className="form-group" style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', color: '#e4e6ea', fontWeight: '500' }}>
-                  Organizacija *
-                </label>
-                <select
-                  value={formData.organization_id}
-                  onChange={e => setFormData(prev => ({ ...prev, organization_id: parseInt(e.target.value) }))}
-                  className={`form-control ${errors.organization_id ? 'is-invalid' : ''}`}
-                  required
-                >
-                  <option value="">Izaberite organizaciju...</option>
-                  {organizations.map(org => (
-                    <option key={org.id} value={org.id}>{org.name}</option>
-                  ))}
-                </select>
-                {errors.organization_id && <div className="invalid-feedback">{errors.organization_id}</div>}
-              </div>
-            )}
+            {/* Organization Selection */}
+            <div className="form-group" style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#e4e6ea', fontWeight: '500' }}>
+                Organizacija * {userOrganizations.length > 1 && (
+                  <small style={{ fontWeight: 'normal', color: 'rgba(228, 230, 234, 0.6)' }}>
+                    (Član ste {userOrganizations.length} organizacija)
+                  </small>
+                )}
+              </label>
+              <select
+                value={formData.organization_id}
+                onChange={e => setFormData(prev => ({ ...prev, organization_id: e.target.value }))}
+                className={`form-control ${errors.organization_id ? 'is-invalid' : ''}`}
+                required
+              >
+                <option value="">Izaberite organizaciju...</option>
+                {userOrganizations.map(org => (
+                  <option key={org.organization_id} value={org.organization_id}>
+                    {org.organization_name} ({org.role === 'ADMIN' ? 'Administrator' : 'Član'})
+                  </option>
+                ))}
+              </select>
+              {errors.organization_id && <div className="invalid-feedback">{errors.organization_id}</div>}
+              {userOrganizations.length === 0 && (
+                <small style={{ color: 'rgba(220, 53, 69, 0.8)', fontSize: '13px', marginTop: '4px', display: 'block' }}>
+                  Niste član nijedne organizacije. Kontaktirajte administratora.
+                </small>
+              )}
+            </div>
 
             {/* League Name */}
             <div className="form-group" style={{ marginBottom: '24px' }}>

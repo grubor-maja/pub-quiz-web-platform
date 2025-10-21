@@ -26,7 +26,7 @@ class MemberController extends BaseController
 
         try {
         $uid = (int) $r->header('X-User-Id');
-        abort_unless($uid, 401, 'Missing user');
+//        abort_unless($uid, 401, 'Missing user');
 
         Organization::findOrFail($id);
 
@@ -45,7 +45,7 @@ class MemberController extends BaseController
             $m->save();
         }
 
-        return response()->json($m, 201);            
+        return response()->json($m, 201);
         } catch( \Exception $e) {
             \Log::error('Member addition failed: ' . $e->getMessage());
             return response()->json([
@@ -60,7 +60,7 @@ class MemberController extends BaseController
     public function index($id)
     {
         $org = Organization::findOrFail($id);
-        
+
         $members = Member::where('organization_id', $id)->get()
             ->map(function ($m) use ($org) {
                 return [
@@ -80,12 +80,73 @@ class MemberController extends BaseController
             $member = Member::where('organization_id', $orgId)
                            ->where('user_id', $userId)
                            ->firstOrFail();
-            
+
             $member->delete();
-            
+
             return response()->json(null, 204);
         } catch (\Exception $e) {
             \Log::error('Member deletion failed: ' . $e->getMessage());
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'service' => 'org-svc'
+            ], 500);
+        }
+    }
+
+    public function update($orgId, $userId, Request $r)
+    {
+        try {
+            $data = $r->validate([
+                'role' => 'required|string|in:ADMIN,MEMBER'
+            ]);
+
+            $member = Member::where('organization_id', $orgId)
+                           ->where('user_id', $userId)
+                           ->firstOrFail();
+
+            $member->role = $data['role'];
+            $member->save();
+
+            return response()->json($member);
+        } catch (\Exception $e) {
+            \Log::error('Member role update failed: ' . $e->getMessage());
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'service' => 'org-svc'
+            ], 500);
+        }
+    }
+
+    // Get all organizations for a specific user
+    public function getUserOrganizations(Request $r)
+    {
+        try {
+            $userId = (int) $r->header('X-User-Id');
+
+            if (!$userId) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'User ID not provided'
+                ], 401);
+            }
+
+            $memberships = Member::where('user_id', $userId)
+                ->with('organization')
+                ->get()
+                ->map(function ($m) {
+                    return [
+                        'organization_id' => $m->organization_id,
+                        'organization_name' => $m->organization->name,
+                        'role' => $m->role,
+                        'created_at' => $m->created_at,
+                    ];
+                });
+
+            return response()->json($memberships);
+        } catch (\Exception $e) {
+            \Log::error('Get user organizations failed: ' . $e->getMessage());
             return response()->json([
                 'error' => true,
                 'message' => $e->getMessage(),

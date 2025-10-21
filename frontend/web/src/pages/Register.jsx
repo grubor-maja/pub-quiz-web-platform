@@ -10,7 +10,6 @@ function Register() {
     password_confirmation: ''
   })
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
@@ -26,28 +25,22 @@ function Register() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    setSuccess('')
 
     if (formData.password !== formData.password_confirmation) {
-      setError('Passwords do not match')
+      setError('Lozinke se ne poklapaju')
       setLoading(false)
       return
     }
 
     try {
       await register(formData)
-      setSuccess('Account created successfully! You will be redirected to login page in 3 seconds...')
-      
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        navigate('/login', { 
-          state: { 
-            message: 'Registration successful! Please log in with your credentials.' 
-          }
-        })
-      }, 3000)
+
+      // Show alert and redirect to login when OK is clicked
+      alert('Nalog je uspešno kreiran! Bićete prebačeni na stranicu za prijavu sa novokreiranim nalogom.')
+
+      navigate('/login')
     } catch (err) {
-      setError(err.message || 'Registration failed')
+      setError(err.message || 'Registracija neuspešna')
     } finally {
       setLoading(false)
     }
@@ -63,15 +56,40 @@ function Register() {
       }}>
         <div className="card" style={{ maxWidth: '450px', width: '100%' }}>
           <div className="card-header" style={{ textAlign: 'center' }}>
-            <h2 className="card-title" style={{ fontSize: '28px', marginBottom: '8px' }}>Join KoZnaZna</h2>
-            <p style={{ color: 'rgba(228, 230, 234, 0.7)', fontSize: '14px', margin: 0 }}>
-              Create your account to start participating in quizzes
-            </p>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '12px'
+            }}>
+              <img 
+                src="/logo1.png" 
+                alt="Dragon Logo" 
+                style={{ 
+                  width: '40px', 
+                  height: '40px' 
+                }} 
+              />
+              <h2 style={{
+                fontSize: '28px',
+                fontFamily: "'Unkempt', cursive",
+                fontWeight: 'bold',
+                margin: 0,
+                display: 'flex',
+                gap: '4px'
+              }}>
+                <span>Pridruzi se </span>
+                <span style={{ color: '#94994F' }}>Ko</span>
+                <span style={{ color: '#F2E394' }}>Zna</span>
+                <span style={{ color: '#F2B441' }}>Zna</span>
+              </h2>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Full Name</label>
+              <label className="form-label">Ime i prezime</label>
               <input
                 type="text"
                 name="name"
@@ -79,13 +97,13 @@ function Register() {
                 onChange={handleChange}
                 required
                 className="form-control"
-                placeholder="Enter your full name"
+                placeholder="Ime i prezime"
                 style={{ fontSize: '16px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Email Address</label>
+              <label className="form-label">Email adresa</label>
               <input
                 type="email"
                 name="email"
@@ -93,13 +111,13 @@ function Register() {
                 onChange={handleChange}
                 required
                 className="form-control"
-                placeholder="Enter your email"
+                placeholder="Email adresa"
                 style={{ fontSize: '16px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Password</label>
+              <label className="form-label">Lozinka</label>
               <input
                 type="password"
                 name="password"
@@ -108,13 +126,13 @@ function Register() {
                 required
                 minLength="8"
                 className="form-control"
-                placeholder="Create a password (min 8 characters)"
+                placeholder="Lozinka (minimum 8 karaktera)"
                 style={{ fontSize: '16px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Confirm Password</label>
+              <label className="form-label">Potvrdite lozinku</label>
               <input
                 type="password"
                 name="password_confirmation"
@@ -123,20 +141,10 @@ function Register() {
                 required
                 minLength="8"
                 className="form-control"
-                placeholder="Confirm your password"
+                placeholder="Potvrdite lozinku"
                 style={{ fontSize: '16px' }}
               />
             </div>
-
-            {success && (
-              <div className="card" style={{ 
-                background: 'rgba(40, 167, 69, 0.1)', 
-                borderColor: 'rgba(40, 167, 69, 0.3)',
-                marginBottom: '24px'
-              }}>
-                <p style={{ color: '#28a745', margin: 0, fontSize: '14px' }}>✅ {success}</p>
-              </div>
-            )}
 
             {error && (
               <div className="card" style={{ 
@@ -144,7 +152,7 @@ function Register() {
                 borderColor: 'rgba(220, 53, 69, 0.3)',
                 marginBottom: '24px'
               }}>
-                <p style={{ color: '#dc3545', margin: 0, fontSize: '14px' }}>❌ {error}</p>
+                <p style={{ color: '#dc3545', margin: 0, fontSize: '14px' }}> {error}</p>
               </div>
             )}
 
@@ -154,12 +162,12 @@ function Register() {
               className="btn btn-primary btn-lg"
               style={{ width: '100%', marginBottom: '24px' }}
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? 'Kreiranje naloga...' : 'Registruj se'}
             </button>
 
             <div style={{ textAlign: 'center' }}>
               <p style={{ color: 'rgba(228, 230, 234, 0.7)', fontSize: '14px' }}>
-                Already have an account?{' '}
+                Već imate nalog?{' '}
                 <Link 
                   to="/login" 
                   style={{ 
@@ -170,7 +178,7 @@ function Register() {
                   onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
                   onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
                 >
-                  Sign in here
+                  Prijavite se ovde
                 </Link>
               </p>
             </div>

@@ -1,0 +1,1266 @@
+openapi: 3.0.3
+info:
+  title: KoZnaZna Platform API
+  description: |
+    Kompletna API dokumentacija za KoZnaZna Platform - mikroservisnu arhitekturu za upravljanje pub kviz platformom.
+    
+    Sistem se sastoji od tri glavna servisa:
+    - **API Gateway** (Port 8000) - Centralna tačka za autentifikaciju i rutiranje
+    - **Organization Service** (Port 8001) - Upravljanje organizacijama i članovima
+    - **Quiz Service** (Port 8002) - Upravljanje kvizovima, timovima i ligama
+    
+    Kreirana za Master rad 2025.
+  version: 1.0.0
+  contact:
+    name: KoZnaZna Platform
+    email: contact@koznazna.com
+servers:
+  - url: http://localhost:8000/api
+    description: API Gateway (Development)
+  - url: http://localhost:8001/api
+    description: Organization Service (Internal)
+  - url: http://localhost:8002/api
+    description: Quiz Service (Internal)
+
+security:
+  - BearerAuth: []
+  - InternalAuth: []
+
+paths:
+  # ===== AUTHENTICATION =====
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Registracija novog korisnika
+      description: Kreiranje novog korisničkog naloga u sistemu
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - password_confirmation
+              properties:
+                name:
+                  type: string
+                  example: "Pera Perić"
+                email:
+                  type: string
+                  format: email
+                  example: "pera@example.com"
+                password:
+                  type: string
+                  minLength: 8
+                  example: "password123"
+                password_confirmation:
+                  type: string
+                  example: "password123"
+      responses:
+        '201':
+          description: Uspešna registracija
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          description: Validacijska greška
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Prijava korisnika
+      description: Autentifikacija korisnika u sistem
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "pera@example.com"
+                password:
+                  type: string
+                  example: "password123"
+      responses:
+        '200':
+          description: Uspešna prijava
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Neispravni podaci za prijavu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Podaci trenutno ulogovanog korisnika
+      description: Dobijanje podataka trenutno autentifikovanog korisnika
+      responses:
+        '200':
+          description: Podaci korisnika
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Neautentifikovan pristup
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Odjava korisnika
+      description: Odjava trenutno ulogovanog korisnika iz sistema
+      responses:
+        '200':
+          description: Uspešna odjava
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Successfully logged out"
+
+  # ===== USER MANAGEMENT =====
+  /manage/users:
+    get:
+      tags:
+        - User Management
+      summary: Lista svih korisnika
+      description: Dobijanje liste svih korisnika u sistemu (samo SUPER_ADMIN)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Broj stranice
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 15
+          description: Broj korisnika po stranici
+      responses:
+        '200':
+          description: Lista korisnika
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersList'
+        '403':
+          description: Nemate dozvolu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - User Management
+      summary: Kreiranje novog korisnika
+      description: Kreiranje novog korisnika (samo SUPER_ADMIN)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - role
+              properties:
+                name:
+                  type: string
+                  example: "Novo Ime"
+                email:
+                  type: string
+                  format: email
+                  example: "novo@example.com"
+                password:
+                  type: string
+                  minLength: 8
+                  example: "password123"
+                role:
+                  type: string
+                  enum: [USER, ORG_MEMBER, ORG_ADMIN, SUPER_ADMIN]
+                  example: "USER"
+      responses:
+        '201':
+          description: Uspešno kreiran korisnik
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /manage/users/{id}:
+    get:
+      tags:
+        - User Management
+      summary: Detalji korisnika
+      description: Dobijanje detalja određenog korisnika
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID korisnika
+      responses:
+        '200':
+          description: Detalji korisnika
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Korisnik nije pronađen
+    put:
+      tags:
+        - User Management
+      summary: Ažuriranje korisnika
+      description: Ažuriranje podataka korisnika (samo SUPER_ADMIN)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Ažurirano Ime"
+                email:
+                  type: string
+                  format: email
+                  example: "azurirano@example.com"
+                password:
+                  type: string
+                  minLength: 8
+                role:
+                  type: string
+                  enum: [USER, ORG_MEMBER, ORG_ADMIN, SUPER_ADMIN]
+      responses:
+        '200':
+          description: Uspešno ažuriran korisnik
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+    delete:
+      tags:
+        - User Management
+      summary: Brisanje korisnika
+      description: Brisanje korisnika iz sistema (samo SUPER_ADMIN)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Uspešno obrisan korisnik
+        '400':
+          description: Ne možete obrisati svoj nalog
+
+  # ===== ORGANIZATIONS =====
+  /organizations:
+    get:
+      tags:
+        - Organizations
+      summary: Lista organizacija
+      description: Dobijanje liste svih organizacija (javno dostupno)
+      security: []
+      responses:
+        '200':
+          description: Lista organizacija
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+
+  /organizations/{id}:
+    get:
+      tags:
+        - Organizations
+      summary: Detalji organizacije
+      description: Dobijanje detalja određene organizacije (javno dostupno)
+      security: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalji organizacije
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '404':
+          description: Organizacija nije pronađena
+
+  /manage/organizations:
+    post:
+      tags:
+        - Organizations
+      summary: Kreiranje organizacije
+      description: Kreiranje nove organizacije (samo SUPER_ADMIN)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - admin_id
+              properties:
+                name:
+                  type: string
+                  example: "Nova Organizacija"
+                admin_id:
+                  type: integer
+                  example: 1
+                description:
+                  type: string
+                  example: "Opis organizacije"
+      responses:
+        '201':
+          description: Uspešno kreirana organizacija
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+
+  /organizations/{id}/members:
+    get:
+      tags:
+        - Organizations
+      summary: Članovi organizacije
+      description: Lista članova određene organizacije
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista članova
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Member'
+    post:
+      tags:
+        - Organizations
+      summary: Dodavanje člana
+      description: Dodavanje novog člana u organizaciju (SUPER_ADMIN/ORG_ADMIN)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+                - role
+              properties:
+                user_id:
+                  type: integer
+                  example: 1
+                role:
+                  type: string
+                  enum: [ORG_MEMBER, ORG_ADMIN]
+                  example: "ORG_MEMBER"
+      responses:
+        '201':
+          description: Uspešno dodat član
+
+  /organizations/{id}/members/{userId}:
+    delete:
+      tags:
+        - Organizations
+      summary: Uklanjanje člana
+      description: Uklanjanje člana iz organizacije (SUPER_ADMIN/ORG_ADMIN)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Uspešno uklonjen član
+
+  # ===== QUIZZES =====
+  /quizzes:
+    get:
+      tags:
+        - Quizzes
+      summary: Lista kvizova
+      description: Dobijanje liste svih kvizova (javno dostupno)
+      security: []
+      responses:
+        '200':
+          description: Lista kvizova
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Quiz'
+    post:
+      tags:
+        - Quizzes
+      summary: Kreiranje kviza
+      description: Kreiranje novog kviza (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizCreate'
+      responses:
+        '201':
+          description: Uspešno kreiran kviz
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+
+  /quizzes/{id}:
+    get:
+      tags:
+        - Quizzes
+      summary: Detalji kviza
+      description: Dobijanje detalja određenog kviza (javno dostupno)
+      security: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalji kviza
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+    put:
+      tags:
+        - Quizzes
+      summary: Ažuriranje kviza
+      description: Ažuriranje podataka kviza (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizCreate'
+      responses:
+        '200':
+          description: Uspešno ažuriran kviz
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+    delete:
+      tags:
+        - Quizzes
+      summary: Brisanje kviza
+      description: Brisanje kviza iz sistema (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Uspešno obrisan kviz
+
+  # ===== TEAMS =====
+  /teams:
+    post:
+      tags:
+        - Teams
+      summary: Kreiranje tima
+      description: Kreiranje novog tima (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamCreate'
+      responses:
+        '201':
+          description: Uspešno kreiran tim
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+
+  /teams/{id}:
+    get:
+      tags:
+        - Teams
+      summary: Detalji tima
+      description: Dobijanje detalja određenog tima
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalji tima
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+    put:
+      tags:
+        - Teams
+      summary: Ažuriranje tima
+      description: Ažuriranje podataka tima (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamCreate'
+      responses:
+        '200':
+          description: Uspešno ažuriran tim
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+    delete:
+      tags:
+        - Teams
+      summary: Brisanje tima
+      description: Brisanje tima iz sistema (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Uspešno obrisan tim
+
+  # ===== LEAGUES =====
+  /leagues:
+    get:
+      tags:
+        - Leagues
+      summary: Lista liga
+      description: Dobijanje liste svih liga (javno dostupno)
+      security: []
+      responses:
+        '200':
+          description: Lista liga
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/League'
+    post:
+      tags:
+        - Leagues
+      summary: Kreiranje lige
+      description: Kreiranje nove lige (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeagueCreate'
+      responses:
+        '201':
+          description: Uspešno kreirana liga
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/League'
+
+  /leagues/{id}:
+    get:
+      tags:
+        - Leagues
+      summary: Detalji lige
+      description: Dobijanje detalja određene lige (javno dostupno)
+      security: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalji lige
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/League'
+    put:
+      tags:
+        - Leagues
+      summary: Ažuriranje lige
+      description: Ažuriranje podataka lige (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeagueCreate'
+      responses:
+        '200':
+          description: Uspešno ažurirana liga
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/League'
+    delete:
+      tags:
+        - Leagues
+      summary: Brisanje lige
+      description: Brisanje lige iz sistema (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Uspešno obrisana liga
+
+  /leagues/{leagueId}/teams:
+    post:
+      tags:
+        - Leagues
+      summary: Dodavanje tima u ligu
+      description: Dodavanje tima u određenu ligu (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: leagueId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - team_id
+              properties:
+                team_id:
+                  type: integer
+                  example: 1
+      responses:
+        '201':
+          description: Tim uspešno dodat u ligu
+
+  /leagues/{leagueId}/teams/{teamId}:
+    delete:
+      tags:
+        - Leagues
+      summary: Uklanjanje tima iz lige
+      description: Uklanjanje tima iz određene lige (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: leagueId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Tim uspešno uklonjen iz lige
+
+  /leagues/{leagueId}/table:
+    get:
+      tags:
+        - Leagues
+      summary: Tabela lige
+      description: Dobijanje trenutne tabele određene lige (javno dostupno)
+      security: []
+      parameters:
+        - in: path
+          name: leagueId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tabela lige
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueTable'
+
+  /leagues/{leagueId}/rounds:
+    post:
+      tags:
+        - Leagues
+      summary: Unos rezultata kola
+      description: Unos rezultata za kolo lige (SUPER_ADMIN/ORG_ADMIN/ORG_MEMBER)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: leagueId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - round_number
+                - results
+              properties:
+                round_number:
+                  type: integer
+                  example: 1
+                results:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      team_id:
+                        type: integer
+                        example: 1
+                      points:
+                        type: integer
+                        example: 8
+      responses:
+        '201':
+          description: Rezultati kola uspešno uneti
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Laravel Sanctum token za autentifikaciju frontend klijenata
+    InternalAuth:
+      type: apiKey
+      in: header
+      name: X-Internal-Auth
+      description: Interni token za komunikaciju između servisa
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Pera Perić"
+        email:
+          type: string
+          format: email
+          example: "pera@example.com"
+        role:
+          type: string
+          enum: [USER, ORG_MEMBER, ORG_ADMIN, SUPER_ADMIN]
+          example: "USER"
+        organization_id:
+          type: integer
+          nullable: true
+          example: 1
+        organization_role:
+          type: string
+          nullable: true
+          enum: [ORG_MEMBER, ORG_ADMIN]
+          example: "ORG_MEMBER"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UsersList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        current_page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 15
+        total:
+          type: integer
+          example: 100
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Klub Kvizaša Beograd"
+        description:
+          type: string
+          nullable: true
+          example: "Organizacija za kviz takmičenja"
+        admin_id:
+          type: integer
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Member:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        organization_id:
+          type: integer
+          example: 1
+        role:
+          type: string
+          enum: [ORG_MEMBER, ORG_ADMIN]
+          example: "ORG_MEMBER"
+        user:
+          $ref: '#/components/schemas/User'
+
+    Quiz:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Opšte znanje - Januar 2025"
+        description:
+          type: string
+          nullable: true
+          example: "Kviz opšteg znanja za zimski period"
+        organization_id:
+          type: integer
+          example: 1
+        event_date:
+          type: string
+          format: date-time
+          example: "2025-01-15T19:00:00Z"
+        capacity:
+          type: integer
+          nullable: true
+          example: 20
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    QuizCreate:
+      type: object
+      required:
+        - name
+        - organization_id
+        - event_date
+      properties:
+        name:
+          type: string
+          example: "Opšte znanje - Januar 2025"
+        description:
+          type: string
+          nullable: true
+          example: "Kviz opšteg znanja za zimski period"
+        organization_id:
+          type: integer
+          example: 1
+        event_date:
+          type: string
+          format: date-time
+          example: "2025-01-15T19:00:00Z"
+        capacity:
+          type: integer
+          nullable: true
+          example: 20
+        is_active:
+          type: boolean
+          default: true
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Mozgovi"
+        organization_id:
+          type: integer
+          example: 1
+        member_count:
+          type: integer
+          example: 4
+        contact_phone:
+          type: string
+          nullable: true
+          example: "+381 64 123 4567"
+        contact_email:
+          type: string
+          nullable: true
+          format: email
+          example: "mozgovi@example.com"
+        notes:
+          type: string
+          nullable: true
+          example: "Napomene o timu"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TeamCreate:
+      type: object
+      required:
+        - name
+        - organization_id
+        - member_count
+      properties:
+        name:
+          type: string
+          example: "Mozgovi"
+        organization_id:
+          type: integer
+          example: 1
+        member_count:
+          type: integer
+          minimum: 1
+          maximum: 8
+          example: 4
+        contact_phone:
+          type: string
+          nullable: true
+          example: "+381 64 123 4567"
+        contact_email:
+          type: string
+          nullable: true
+          format: email
+          example: "mozgovi@example.com"
+        notes:
+          type: string
+          nullable: true
+          example: "Napomene o timu"
+
+    League:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Zimska Liga 2025"
+        description:
+          type: string
+          nullable: true
+          example: "Zimska sezona kviz lige"
+        organization_id:
+          type: integer
+          example: 1
+        start_date:
+          type: string
+          format: date
+          example: "2025-01-01"
+        end_date:
+          type: string
+          format: date
+          nullable: true
+          example: "2025-03-31"
+        is_active:
+          type: boolean
+          example: true
+        total_rounds:
+          type: integer
+          example: 10
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LeagueCreate:
+      type: object
+      required:
+        - name
+        - organization_id
+        - start_date
+        - total_rounds
+      properties:
+        name:
+          type: string
+          example: "Zimska Liga 2025"
+        description:
+          type: string
+          nullable: true
+          example: "Zimska sezona kviz lige"
+        organization_id:
+          type: integer
+          example: 1
+        start_date:
+          type: string
+          format: date
+          example: "2025-01-01"
+        end_date:
+          type: string
+          format: date
+          nullable: true
+          example: "2025-03-31"
+        total_rounds:
+          type: integer
+          minimum: 1
+          example: 10
+        is_active:
+          type: boolean
+          default: true
+
+    LeagueTable:
+      type: object
+      properties:
+        league_id:
+          type: integer
+          example: 1
+        completed_rounds:
+          type: integer
+          example: 5
+        table:
+          type: array
+          items:
+            type: object
+            properties:
+              position:
+                type: integer
+                example: 1
+              team_id:
+                type: integer
+                example: 1
+              team_name:
+                type: string
+                example: "Mozgovi"
+              total_points:
+                type: integer
+                example: 42
+              rounds:
+                type: array
+                items:
+                  type: integer
+                example: [8, 9, 7, 10, 8]
+
+    AuthResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "User created successfully"
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          example: "1|abc123def456..."
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Unauthorized access"
+        message:
+          type: string
+          example: "You are not authorized to access this resource"
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "The given data was invalid."
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            email: ["The email field is required."]
+            password: ["The password must be at least 8 characters."]
+
+tags:
+  - name: Authentication
+    description: Autentifikacija i upravljanje sesijama
+  - name: User Management
+    description: Upravljanje korisnicima (SUPER_ADMIN)
+  - name: Organizations
+    description: Upravljanje organizacijama
+  - name: Quizzes
+    description: Upravljanje kvizovima
+  - name: Teams
+    description: Upravljanje timovima
+  - name: Leagues
+    description: Upravljanje ligama

@@ -11,7 +11,7 @@ class CheckRole
     public function handle(Request $request, Closure $next, ...$roles)
     {
         $user = $request->user();
-        
+
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
@@ -32,23 +32,17 @@ class CheckRole
             if (in_array('ORG_ADMIN', $roles)) {
                 return $next($request);
             }
-            
-            // Za quiz management, super admin mora biti član organizacije  
+
+            // Za quiz management, super admin mora biti član organizacije
             if (in_array('ORG_MEMBER', $roles)) {
                 $quizId = $request->route('id');
                 if ($quizId && !$this->canManageQuiz($user->id, $quizId)) {
                     return response()->json(['error' => 'Super admin must be organization member to manage quizzes'], 403);
                 }
-                
-                // Za CREATE quiz, provjeri organization_id iz request-a
-                if ($request->isMethod('post') && $request->has('organization_id')) {
-                    $orgId = $request->input('organization_id');
-                    if (!$this->isOrgMember($user->id, $orgId)) {
-                        return response()->json(['error' => 'Must be organization member to create quizzes'], 403);
-                    }
-                }
+
+
             }
-            
+
             return $next($request);
         }
 
@@ -56,12 +50,15 @@ class CheckRole
         if (in_array($user->role, $roles)) {
             return $next($request);
         }
-
+        \Log::info('Ovde sam 1');
         // Za organizacijske operacije provjeri member role
-        if ($request->route('id') || $request->route('orgId')) {
-            $orgId = $request->route('id') ?? $request->route('orgId');
-            
-            if ($this->isOrgAdmin($user->id, $orgId) && in_array('ORG_ADMIN', $roles)) {
+        if ($request->route('id') || $request->route('orgId') || $request->has('organization_id')) {
+            \Log::info('Ovde sam 2');
+            $orgId = $request->route('id')
+                ?? $request->route('orgId')
+                ?? $request->input('organization_id')
+                ?? ($request->user() ? $request->user()->organization_id : null);
+            if ($this->isOrgAdmin($user->id, $orgId) && in_array('ADMIN', $roles)) {
                 return $next($request);
             }
 
@@ -69,6 +66,7 @@ class CheckRole
                 return $next($request);
             }
         }
+        \Log::info("User {$user->id} with role {$user->role} denied access. Required roles: " . implode(',', $roles));
 
         return response()->json(['error' => 'Insufficient permissions'], 403);
     }
@@ -87,6 +85,7 @@ class CheckRole
             }
 
             $members = $response->json();
+            \Log::info('Members of org ' . $orgId, ['members' => $members]);
             foreach ($members as $member) {
                 if ($member['user_id'] == $userId && $member['role'] === 'ADMIN') {
                     return true;
@@ -94,6 +93,7 @@ class CheckRole
             }
             return false;
         } catch (\Exception $e) {
+            \Log::info("Error checking org admin status: " . $e->getMessage());
             return false;
         }
     }
@@ -139,14 +139,14 @@ class CheckRole
 
             $quiz = $response->json();
             $orgId = $quiz['organization_id'] ?? null;
-            
+
             if (!$orgId) {
                 return false;
             }
 
             // Provjeri da li je user član te organizacije
             return $this->isOrgMember($userId, $orgId);
-            
+
         } catch (\Exception $e) {
             return false;
         }
