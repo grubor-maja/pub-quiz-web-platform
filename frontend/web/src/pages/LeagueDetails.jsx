@@ -303,23 +303,6 @@ function LeagueDetails() {
         {canManage && (
           <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button
-              onClick={() => setIsManaging(!isManaging)}
-              className="btn btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              {isManaging ? (
-                <>
-                  <HiOutlineTable style={{ fontSize: '18px' }} />
-                  <span>Prikaži tabelu</span>
-                </>
-              ) : (
-                <>
-                  <IoSettingsOutline style={{ fontSize: '18px' }} />
-                  <span>Upravljaj ligom</span>
-                </>
-              )}
-            </button>
-            <button
               onClick={() => navigate('/manage/leagues')}
               className="btn btn-secondary"
             >

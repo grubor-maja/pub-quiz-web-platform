@@ -183,13 +183,25 @@ function ManageLeagues() {
         contact_phone: newTeamPhone.trim() || null
       }
 
-      await teamService.createTeam(teamData)
-      setSuccess('Tim je uspešno kreiran!')
+      const createdTeam = await teamService.createTeam(teamData)
+
+      // Automatski dodaj tim u ligu
+      if (selectedLeague?.id && createdTeam?.id) {
+        await leagueService.addTeamToLeague(selectedLeague.id, createdTeam.id)
+        setSuccess('Tim je uspešno kreiran i dodat u ligu!')
+      } else {
+        setSuccess('Tim je uspešno kreiran!')
+      }
+
       setNewTeamName('')
       setNewTeamMembers(4)
       setNewTeamPhone('')
       setShowCreateTeam(false)
-      await fetchAvailableTeams() // Refresh teams list
+
+      // Prvo osvežavamo lige što automatski povlači i timove u njima
+      await fetchLeagues()
+      // Tek nakon toga osvežavamo dostupne timove
+      await fetchAvailableTeams()
     } catch (err) {
       console.error('Create team error:', err)
       setError('Greška pri kreiranju tima: ' + err.message)
@@ -313,44 +325,90 @@ function ManageLeagues() {
                       )}
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <button 
-                        onClick={() => setSelectedLeague(selectedLeague?.id === league.id ? null : league)}
-                        className="btn btn-sm btn-primary"
-                      >
-                        <RiTeamFill style={{ marginRight: '4px' }} /> {selectedLeague?.id === league.id ? 'Sakrij' : 'Timovi'}
-                      </button>
-                      <button
-                        onClick={() => handleEnterResults(league)}
-                        className="btn btn-sm btn-success"
-                        disabled={!league.teams?.length}
-                        title={!league.teams?.length ? 'Dodajte timove pre unosa rezultata' : 'Unesi rezultate kola'}
-                      >
-                        <HiDocument/> Rezultati
-                      </button>
-                      <button
-                        onClick={() => navigate(`/league/${league.id}`)}
-                        className="btn btn-sm btn-secondary"
-                      >
-                        <BiTable/> Tabela
-                      </button>
-                      <button 
-                        onClick={() => handleEditLeague(league)}
-                        className="btn btn-sm btn-secondary"
-                      >
-                        <FaRegEdit style={{ marginRight: '4px' }} /> Edituj
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteLeague(league.id)}
-                        className="btn btn-sm" 
-                        style={{ 
-                          background: 'rgba(220, 53, 69, 0.15)',
-                          color: '#dc3545',
-                          border: '1px solid rgba(220, 53, 69, 0.3)'
-                        }}
-                      >
-                        <RiDeleteBin6Line style={{ marginRight: '4px' }} /> Obriši
-                      </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: '280px' }}>
+                      {/* Akcije nad ligom */}
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        padding: '8px',
+                        background: 'rgba(33, 74, 156, 0.1)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(33, 74, 156, 0.2)'
+                      }}>
+                        <button
+                          onClick={() => handleEditLeague(league)}
+                          className="btn btn-sm btn-primary"
+                          style={{ flex: 1, fontSize: '13px', padding: '8px 12px' }}
+                          title="Izmeni ligu"
+                        >
+                          <FaRegEdit /> Edituj
+                        </button>
+                        <button
+                          onClick={() => handleDeleteLeague(league.id)}
+                          className="btn btn-sm"
+                          style={{
+                            background: 'rgba(220, 53, 69, 0.2)',
+                            color: '#dc3545',
+                            border: '1px solid rgba(220, 53, 69, 0.4)',
+                            fontSize: '13px',
+                            padding: '8px 12px'
+                          }}
+                          title="Obriši ligu"
+                        >
+                          <RiDeleteBin6Line /> Obriši
+                        </button>
+                      </div>
+
+                      {/* Pregled i upravljanje */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '8px'
+                      }}>
+                        <button
+                          onClick={() => setSelectedLeague(selectedLeague?.id === league.id ? null : league)}
+                          className="btn btn-sm"
+                          style={{
+                            background: 'rgba(40, 167, 69, 0.15)',
+                            color: '#28a745',
+                            border: '1px solid rgba(40, 167, 69, 0.3)',
+                            fontSize: '13px',
+                            padding: '8px 12px'
+                          }}
+                          title="Upravljaj timovima"
+                        >
+                          <RiTeamFill /> Timovi
+                        </button>
+                        <button
+                          onClick={() => handleEnterResults(league)}
+                          className="btn btn-sm"
+                          style={{
+                            background: 'rgba(255, 193, 7, 0.15)',
+                            color: '#ffc107',
+                            border: '1px solid rgba(255, 193, 7, 0.3)',
+                            fontSize: '13px',
+                            padding: '8px 12px',
+                            opacity: !league.teams?.length ? 0.5 : 1,
+                            cursor: !league.teams?.length ? 'not-allowed' : 'pointer'
+                          }}
+                          disabled={!league.teams?.length}
+                          title={!league.teams?.length ? 'Dodajte timove pre unosa rezultata' : 'Unesi rezultate kola'}
+                        >
+                          <HiDocument/> Rezultati
+                        </button>
+                        <button
+                          onClick={() => navigate(`/league/${league.id}`)}
+                          className="btn btn-sm btn-secondary"
+                          style={{
+                            fontSize: '13px',
+                            padding: '8px 12px',
+                            gridColumn: 'span 2'
+                          }}
+                          title="Pogledaj tabelu lige"
+                        >
+                          <BiTable/> Prikaži tabelu lige
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -442,7 +500,7 @@ function ManageLeagues() {
                           className="btn btn-sm btn-primary"
                           style={{ marginBottom: '16px' }}
                         >
-                          {showCreateTeam ? '−' : '+'} Kreiraj novi tim
+                          {showCreateTeam ? '−' : '+'} Dodaj novi tim
                         </button>
 
                         {showCreateTeam && (
@@ -452,86 +510,55 @@ function ManageLeagues() {
                             borderRadius: '8px',
                             border: '1px solid rgba(40, 167, 69, 0.2)',
                             display: 'flex',
-                            flexDirection: 'column',
-                            gap: '12px'
+                            gap: '12px',
+                            alignItems: 'flex-end'
                           }}>
-                            <div>
-                              <label style={{ display: 'block', marginBottom: '8px', color: '#e4e6ea' }}>
-                                Naziv tima:
+                            <div style={{ flex: 1 }}>
+                              <label style={{ display: 'block', marginBottom: '8px', color: '#e4e6ea', fontSize: '14px' }}>
+                                Naziv novog tima:
                               </label>
                               <input
                                 type="text"
                                 value={newTeamName}
                                 onChange={(e) => setNewTeamName(e.target.value)}
+                                placeholder="Unesite naziv tima..."
+                                autoFocus
                                 style={{
-                                  padding: '8px 12px',
+                                  padding: '10px 12px',
                                   borderRadius: '6px',
                                   border: '1px solid rgba(228, 230, 234, 0.3)',
                                   backgroundColor: '#3c3c3c',
                                   color: '#e4e6ea',
-                                  width: '100%'
+                                  width: '100%',
+                                  fontSize: '14px'
                                 }}
                                 required
                               />
                             </div>
 
-                            <div>
-                              <label style={{ display: 'block', marginBottom: '8px', color: '#e4e6ea' }}>
-                                Broj članova:
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                value={newTeamMembers}
-                                onChange={(e) => setNewTeamMembers(e.target.value)}
-                                style={{
-                                  padding: '8px 12px',
-                                  borderRadius: '6px',
-                                  border: '1px solid rgba(228, 230, 234, 0.3)',
-                                  backgroundColor: '#3c3c3c',
-                                  color: '#e4e6ea',
-                                  width: '100%'
-                                }}
-                                required
-                              />
-                            </div>
+                            <button
+                              type="submit"
+                              className="btn btn-primary"
+                              disabled={creatingTeam || !newTeamName.trim()}
+                              style={{
+                                padding: '10px 20px',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {creatingTeam ? 'Dodavanje...' : '+ Dodaj u ligu'}
+                            </button>
 
-                            <div>
-                              <label style={{ display: 'block', marginBottom: '8px', color: '#e4e6ea' }}>
-                                Kontakt telefon:
-                              </label>
-                              <input
-                                type="text"
-                                value={newTeamPhone}
-                                onChange={(e) => setNewTeamPhone(e.target.value)}
-                                style={{
-                                  padding: '8px 12px',
-                                  borderRadius: '6px',
-                                  border: '1px solid rgba(228, 230, 234, 0.3)',
-                                  backgroundColor: '#3c3c3c',
-                                  color: '#e4e6ea',
-                                  width: '100%'
-                                }}
-                                placeholder="Opcionalno"
-                              />
-                            </div>
-
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                              <button
-                                type="button"
-                                onClick={() => setShowCreateTeam(false)}
-                                className="btn btn-secondary"
-                              >
-                                Otkaži
-                              </button>
-                              <button
-                                type="submit"
-                                className="btn btn-primary"
-                                disabled={creatingTeam}
-                              >
-                                {creatingTeam ? 'Kreiranje...' : 'Kreiraj tim'}
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCreateTeam(false)
+                                setNewTeamName('')
+                              }}
+                              className="btn btn-secondary"
+                              style={{ padding: '10px 16px' }}
+                            >
+                              ✕
+                            </button>
                           </form>
                         )}
                       </div>
