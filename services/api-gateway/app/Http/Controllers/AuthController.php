@@ -93,7 +93,6 @@ class AuthController extends Controller
         $data = json_decode($clean, true);
         if (json_last_error() === JSON_ERROR_NONE && is_array($data)) return $data;
 
-        // duplo enkodovan slučaj: body je JSON string koji sadrži JSON
         $str = json_decode($clean, true);
         if (json_last_error() === JSON_ERROR_NONE && is_string($str)) {
             $data2 = json_decode($str, true);
@@ -122,11 +121,11 @@ class AuthController extends Controller
     {
         try {
             $user = $request->user();
-            
+
             if (!$user) {
                 return response()->json(['error' => 'User not found'], 401);
             }
-            
+
             // Get organization_id and role from org-svc if exists
             $orgData = $this->getOrganizationData($user);
             \Log::debug('Organization data me metoda: ' . ($orgData['organization_id'] ?? 'null'));
@@ -216,7 +215,7 @@ class AuthController extends Controller
     {
         try {
             $request->user()->currentAccessToken()->delete();
-            
+
             return response()->json([
                 'message' => 'Logged out successfully'
             ]);

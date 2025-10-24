@@ -16,42 +16,32 @@ class CheckRole
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        // Specijalna logika za kreiranje lige - samo SUPER_ADMIN (user_id 2) prolazi kroz punu proveru
         if ($request->isMethod('post') && $request->is('*/leagues')) {
             if ($user->id != 2) {
-                // Za sve ostale korisnike koji nisu SUPER_ADMIN, preskačemo CheckRole
-                // Liga će se kreirati za njihovu organizaciju na osnovu organization_id iz payload-a
                 return $next($request);
             }
-            // SUPER_ADMIN (user_id 2) nastavlja sa standardnom proverom
         }
 
-        // Super admin ima pristup svemu osim quiz management-u
         if ($user->isSuperAdmin()) {
-            // Super admin može upravljati članovima organizacije bez ograničenja
             if (in_array('ORG_ADMIN', $roles)) {
                 return $next($request);
             }
 
-            // Za quiz management, super admin mora biti član organizacije
             if (in_array('ORG_MEMBER', $roles)) {
                 $quizId = $request->route('id');
                 if ($quizId && !$this->canManageQuiz($user->id, $quizId)) {
                     return response()->json(['error' => 'Super admin must be organization member to manage quizzes'], 403);
                 }
-
-
             }
 
             return $next($request);
         }
 
-        // Provjeri da li user ima potrebnu ulogu
         if (in_array($user->role, $roles)) {
             return $next($request);
         }
         \Log::info('Ovde sam 1');
-        // Za organizacijske operacije provjeri member role
+
         if ($request->route('id') || $request->route('orgId') || $request->has('organization_id')) {
             \Log::info('Ovde sam 2');
             $orgId = $request->route('id')
@@ -123,11 +113,9 @@ class CheckRole
         }
     }
 
-    // Za quiz operacije provjeri da li user pripada organizaciji kviza
     private function canManageQuiz($userId, $quizId): bool
     {
         try {
-            // Dohvati quiz da vidiš kojoj organizaciji pripada
             $response = Http::withHeaders([
                 'X-Internal-Auth' => env('INTERNAL_SHARED_SECRET'),
                 'Accept' => 'application/json',
@@ -144,7 +132,6 @@ class CheckRole
                 return false;
             }
 
-            // Provjeri da li je user član te organizacije
             return $this->isOrgMember($userId, $orgId);
 
         } catch (\Exception $e) {

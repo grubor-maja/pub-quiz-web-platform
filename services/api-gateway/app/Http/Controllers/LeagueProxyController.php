@@ -13,11 +13,9 @@ class LeagueProxyController extends Controller
 
     public function __construct()
     {
-        // npr. services.quiz_service.url = http://quiz-svc:8003
         $this->base = rtrim(config('services.quiz_service.url', env('QUIZ_SVC_URL', 'http://localhost:8003')), '/') . '/api/internal';
     }
 
-    /** ------------------------- helpers ------------------------- */
 
     private function headers(Request $request): array
     {
@@ -31,7 +29,6 @@ class LeagueProxyController extends Controller
 
     private function json(HttpResponse $resp)
     {
-        // robustno dekodiranje zbog BOM-a / duplog JSON-a
         $body  = $resp->body() ?? '';
         $clean = ltrim($body, "\xEF\xBB\xBF\xFE\xFF\xFF\xFE");
         $data  = json_decode($clean, true);
@@ -58,7 +55,6 @@ class LeagueProxyController extends Controller
         return response()->json($payload, $resp->status());
     }
 
-    /** ------------------------- public GET ------------------------- */
 
     public function getLeagues(Request $request)
     {
@@ -104,7 +100,6 @@ class LeagueProxyController extends Controller
         }
     }
 
-    /** ------------------------- mutations (auth:sanctum na rutama) ------------------------- */
 
     public function createLeague(Request $request)
     {
@@ -172,7 +167,6 @@ class LeagueProxyController extends Controller
         }
     }
 
-    /** ------------------------- health ------------------------- */
 
     public function health(Request $request)
     {

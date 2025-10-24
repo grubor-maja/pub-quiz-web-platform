@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: pab_kviz
+      MYSQL_USER: app
+      MYSQL_PASSWORD: secret
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: pab_kviz
+      DB_USERNAME: app
+      DB_PASSWORD: secret
+    volumes:
+      - ./services/api-gateway:/var/www/html
+    networks:
+      - pabnet
+
+  org-svc:
+    build: ./services/org-svc
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: pab_kviz
+      DB_USERNAME: app
+      DB_PASSWORD: secret
+    volumes:
+      - ./services/org-svc:/var/www/html
+    networks:
+      - pabnet
+
+  quiz-svc:
+    build: ./services/quiz-svc
+    ports:
+      - "8002:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: pab_kviz
+      DB_USERNAME: app
+      DB_PASSWORD: secret
+    volumes:
+      - ./services/quiz-svc:/var/www/html
+    networks:
+      - pabnet
+
+volumes:
+  db_data:
+
+networks:
+  pabnet:
+    driver: bridge

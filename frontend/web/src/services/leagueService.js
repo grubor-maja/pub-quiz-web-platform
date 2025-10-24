@@ -57,7 +57,6 @@ export const leagueService = {
     }
   },
 
-  // Get leagues by organization
   async getLeaguesByOrganization(organizationId) {
     try {
       const response = await fetch(`${API_BASE_URL}/organizations/${organizationId}/leagues`, {
@@ -72,7 +71,6 @@ export const leagueService = {
     }
   },
 
-  // Get league by ID
   async getLeague(leagueId) {
     try {
       const response = await fetch(`${API_BASE_URL}/leagues/${leagueId}`, {
@@ -87,12 +85,10 @@ export const leagueService = {
     }
   },
 
-  // Alias for backward compatibility
   async getLeagueById(leagueId) {
     return this.getLeague(leagueId)
   },
 
-  // Create new league
   async createLeague(leagueData) {
     try {
       const response = await fetch(`${API_BASE_URL}/leagues`, {
@@ -108,7 +104,6 @@ export const leagueService = {
     }
   },
 
-  // Update league
   async updateLeague(leagueId, leagueData) {
     try {
       const response = await fetch(`${API_BASE_URL}/leagues/${leagueId}`, {
@@ -124,7 +119,6 @@ export const leagueService = {
     }
   },
 
-  // Delete league
   async deleteLeague(leagueId) {
     try {
       const response = await fetch(`${API_BASE_URL}/leagues/${leagueId}`, {
@@ -132,17 +126,15 @@ export const leagueService = {
         headers: getAuthHeaders(),
       })
       
-      // Handle 204 No Content response (successful deletion)
       if (response.status === 204) {
         return true
       }
       
-      // For other successful responses, try to parse JSON
       if (response.ok) {
         try {
           return await response.json()
         } catch {
-          return true // If no JSON, just return success
+          return true
         }
       }
 

@@ -306,7 +306,7 @@ select.form-control option {
   padding: 8px;
 }
 
-/* Custom validation messages in Serbian */
+/* Custom validation messages  */
 input:invalid,
 select:invalid,
 textarea:invalid {

@@ -185,7 +185,7 @@ function ManageLeagues() {
 
       const createdTeam = await teamService.createTeam(teamData)
 
-      // Automatski dodaj tim u ligu
+      // Automatic adding team to league
       if (selectedLeague?.id && createdTeam?.id) {
         await leagueService.addTeamToLeague(selectedLeague.id, createdTeam.id)
         setSuccess('Tim je uspešno kreiran i dodat u ligu!')
@@ -198,9 +198,7 @@ function ManageLeagues() {
       setNewTeamPhone('')
       setShowCreateTeam(false)
 
-      // Prvo osvežavamo lige što automatski povlači i timove u njima
       await fetchLeagues()
-      // Tek nakon toga osvežavamo dostupne timove
       await fetchAvailableTeams()
     } catch (err) {
       console.error('Create team error:', err)

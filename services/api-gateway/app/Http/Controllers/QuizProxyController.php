@@ -5,16 +5,20 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\CircuitBreaker;
+use App\Services\CircuitBreakerOpenException;
 
 class QuizProxyController extends Controller
 {
     private string $base;
     private string $secret;
+    private CircuitBreaker $circuitBreaker;
 
     public function __construct()
     {
         $this->base   = rtrim(env('QUIZ_SVC_URL', 'http://localhost:8002'), '/');
         $this->secret = env('INTERNAL_SHARED_SECRET', 'devsecret123');
+        $this->circuitBreaker = new CircuitBreaker('quiz-svc');
     }
 
     private function headers(Request $req): array
@@ -43,9 +47,13 @@ class QuizProxyController extends Controller
     public function getQuizzes(Request $req)
     {
         try {
-            $r = Http::withHeaders($this->headers($req))
-                ->get("{$this->base}/api/internal/quizzes");
-            return $this->passThrough($r);
+            return $this->circuitBreaker->call(function () use ($req) {
+                $r = Http::withHeaders($this->headers($req))
+                    ->get("{$this->base}/api/internal/quizzes");
+                return $this->passThrough($r);
+            });
+        } catch (CircuitBreakerOpenException $e) {
+            return response()->json(['error' => 'quiz-svc circuit breaker open', 'msg' => $e->getMessage()], 503);
         } catch (\Throwable $e) {
             return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
         }
@@ -54,9 +62,13 @@ class QuizProxyController extends Controller
     public function getQuiz(Request $req, $id)
     {
         try {
-            $r = Http::withHeaders($this->headers($req))
-                ->get("{$this->base}/api/internal/quizzes/{$id}");
-            return $this->passThrough($r);
+            return $this->circuitBreaker->call(function () use ($req, $id) {
+                $r = Http::withHeaders($this->headers($req))
+                    ->get("{$this->base}/api/internal/quizzes/{$id}");
+                return $this->passThrough($r);
+            });
+        } catch (CircuitBreakerOpenException $e) {
+            return response()->json(['error' => 'quiz-svc circuit breaker open', 'msg' => $e->getMessage()], 503);
         } catch (\Throwable $e) {
             return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
         }
@@ -65,32 +77,46 @@ class QuizProxyController extends Controller
     public function getQuizzesByOrganization(Request $req, $orgId)
     {
         try {
-            $r = Http::withHeaders($this->headers($req))
-                ->get("{$this->base}/api/internal/orgs/{$orgId}/quizzes");
-            return $this->passThrough($r);
+            return $this->circuitBreaker->call(function () use ($req, $orgId) {
+                $r = Http::withHeaders($this->headers($req))
+                    ->get("{$this->base}/api/internal/orgs/{$orgId}/quizzes");
+                return $this->passThrough($r);
+            });
+        } catch (CircuitBreakerOpenException $e) {
+            return response()->json(['error' => 'quiz-svc circuit breaker open', 'msg' => $e->getMessage()], 503);
         } catch (\Throwable $e) {
             return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
         }
     }
+
     public function getQuizzesByOrg(Request $req, $orgId)
-        {
-            try {
+    {
+        try {
+            return $this->circuitBreaker->call(function () use ($req, $orgId) {
                 \Log::info('Forwarding headers to quiz-11', $this->headers($req));
 
                 $r = Http::withHeaders($this->headers($req))
                     ->get("{$this->base}/api/internal/orgs/{$orgId}/quizzes");
                 \Log::info('Forwarding headers to quiz-svc', $this->headers($req));
                 return $this->passThrough($r);
-            } catch (\Throwable $e) {
-                return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
-            }
+            });
+        } catch (CircuitBreakerOpenException $e) {
+            return response()->json(['error' => 'quiz-svc circuit breaker open', 'msg' => $e->getMessage()], 503);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
         }
+    }
+
     public function createQuiz(Request $req)
     {
         try {
-            $r = Http::withHeaders($this->headers($req))
-                ->post("{$this->base}/api/internal/quizzes", $req->all());
-            return $this->passThrough($r);
+            return $this->circuitBreaker->call(function () use ($req) {
+                $r = Http::withHeaders($this->headers($req))
+                    ->post("{$this->base}/api/internal/quizzes", $req->all());
+                return $this->passThrough($r);
+            });
+        } catch (CircuitBreakerOpenException $e) {
+            return response()->json(['error' => 'quiz-svc circuit breaker open', 'msg' => $e->getMessage()], 503);
         } catch (\Throwable $e) {
             return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
         }
@@ -99,9 +125,13 @@ class QuizProxyController extends Controller
     public function updateQuiz(Request $req, $id)
     {
         try {
-            $r = Http::withHeaders($this->headers($req))
-                ->put("{$this->base}/api/internal/quizzes/{$id}", $req->all());
-            return $this->passThrough($r);
+            return $this->circuitBreaker->call(function () use ($req, $id) {
+                $r = Http::withHeaders($this->headers($req))
+                    ->put("{$this->base}/api/internal/quizzes/{$id}", $req->all());
+                return $this->passThrough($r);
+            });
+        } catch (CircuitBreakerOpenException $e) {
+            return response()->json(['error' => 'quiz-svc circuit breaker open', 'msg' => $e->getMessage()], 503);
         } catch (\Throwable $e) {
             return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
         }
@@ -110,9 +140,13 @@ class QuizProxyController extends Controller
     public function deleteQuiz(Request $req, $id)
     {
         try {
-            $r = Http::withHeaders($this->headers($req))
-                ->delete("{$this->base}/api/internal/quizzes/{$id}");
-            return $this->passThrough($r);
+            return $this->circuitBreaker->call(function () use ($req, $id) {
+                $r = Http::withHeaders($this->headers($req))
+                    ->delete("{$this->base}/api/internal/quizzes/{$id}");
+                return $this->passThrough($r);
+            });
+        } catch (CircuitBreakerOpenException $e) {
+            return response()->json(['error' => 'quiz-svc circuit breaker open', 'msg' => $e->getMessage()], 503);
         } catch (\Throwable $e) {
             return response()->json(['error' => 'quiz-svc unavailable', 'msg' => $e->getMessage()], 503);
         }
@@ -121,14 +155,18 @@ class QuizProxyController extends Controller
     public function health(Request $req)
     {
         try {
-            $r = Http::withHeaders($this->headers($req))
-                ->get("{$this->base}/api/health");
+            return $this->circuitBreaker->call(function () use ($req) {
+                $r = Http::withHeaders($this->headers($req))
+                    ->get("{$this->base}/api/health");
 
-            return response()->json([
-                'quiz_proxy' => 'ok',
-                'quiz_svc'   => $r->successful() ? 'ok' : 'error',
-                'quiz_data'  => json_decode($r->body(), true),
-            ], $r->status());
+                return response()->json([
+                    'quiz_proxy' => 'ok',
+                    'quiz_svc'   => $r->successful() ? 'ok' : 'error',
+                    'quiz_data'  => json_decode($r->body(), true),
+                ], $r->status());
+            });
+        } catch (CircuitBreakerOpenException $e) {
+            return response()->json(['quiz_proxy' => 'ok', 'quiz_svc' => 'circuit_open', 'msg' => $e->getMessage()], 503);
         } catch (\Throwable $e) {
             return response()->json(['quiz_proxy' => 'ok', 'quiz_svc' => 'error', 'msg' => $e->getMessage()], 503);
         }
